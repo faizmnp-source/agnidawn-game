@@ -1,0 +1,54 @@
+# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# MemoryCaptures can get expensive, check if they are needed
+[Mm]emoryCaptures/
+
+# Asset meta data should only be ignored when the corresponding asset is also ignored
+!/[Aa]ssets/**/*.meta
+
+# Unity3D generated meta files
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity3D generated file on crash reports
+sysinfo.txt
+
+# Builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Crashlytics
+crashlytics-build.properties
+
+# OS generated
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Rider / VS
+.idea/
+*.sln
+*.csproj
+*.suo
+*.userprefs
+*.user
+.vs/
+
+# Visual Studio Code
+.vscode/
+
+# FMOD
+AudioLinkAudioManagerFMOD_*
+
+# Shader cache
+ShaderCache/
