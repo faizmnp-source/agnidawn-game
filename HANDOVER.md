@@ -18,6 +18,8 @@
 | Fix | AGNIDAWN.Bosses.asmdef + BossSystemTests namespace fix | Live Session | pending | 🔄 In Progress |
 | Phase 6 | Astra Weapons — BaseAstraProjectile + 10 divine weapon scripts + AstraSystemTests | Scheduled Task | `b86cfa5` | ✅ Done |
 | Phase 7 | Biomes — BiomeData SO, BiomeManager (timed rotation), SpawnManager registry+biome hooks, BaseEnemy slow/knockback consumers, SudarshanaChakra fix, BiomeSystemTests | Scheduled Task | `b9c37c5` | ✅ Done |
+| Phase 8 | Meta-Progression & Shrine System — DivineShardManager, ShrineData/Manager (5 shrines), LoreFragment/Manager, DifficultyData/Manager, SaveSystem extended, MetaProgressionTests (20 tests) | Scheduled Task | `c1ddfcf` | ✅ Done |
+| Phase 9 | FMOD Audio Integration — AudioEventData SO, AudioManager (FMOD+Unity fallback), MusicManager (biome/boss adaptive), SFXController (EventBus→audio), AudioBusController, AudioSystemTests (25 tests) | Scheduled Task | pending | ✅ Done |
 
 ---
 
@@ -34,6 +36,8 @@ AGNIDAWN.Enemies  (refs Core + Player)
 AGNIDAWN.Bosses   (refs Core + Player + Enemies)
     ↓
 AGNIDAWN.Gameplay (refs Core + Player + Enemies)
+    ↓
+AGNIDAWN.Audio    (refs Core + Player + Enemies + Bosses + Gameplay)
     ↓
 AGNIDAWN.Tests.EditMode (refs all above, Editor-only)
 ```
@@ -69,6 +73,11 @@ AGNIDAWN.Tests.EditMode (refs all above, Editor-only)
 | `OnLightningChain` | Vector2, Vector2 | Vajra | VFX line renderer |
 | `OnBiomeEntered` | BiomeData | BiomeManager | SpawnManager + BaseEnemy cache modifiers |
 | `OnBiomeExited` | BiomeData | BiomeManager | UI / audio transitions (Phase 13/14) |
+| `OnShardCollected` | int | DivineShardManager | UI shard counter update |
+| `OnShardSpent` | int | ShrineManager | UI shard counter update |
+| `OnShrineUnlocked` | string shrineId | ShrineManager | UI shrine node activation |
+| `OnLoreCollected` | string fragmentId | LoreManager | Purana book notification |
+| `OnDifficultyChanged` | string difficultyId | DifficultyManager | UI difficulty selection |
 
 ### ObjectPool Key Convention
 Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`, `Boss_Ravana`
@@ -105,8 +114,8 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 |--------|-------|------|--------|
 | FAI-11 | Phase 6 | Divine Weapon Astras — 10 weapons with unique projectile scripts (Trishul, Gandiv, Sudarshana Chakra, Brahmastra, Pashupatastra, Nagastra, Varunastra, Vayuastra, Agneyastra, Vajra) | ✅ Done |
 | FAI-12 | Phase 7 | Biomes (Forest, Desert, Mountain, Ocean, Underworld) | ✅ Done |
-| FAI-13 | Phase 8 | UI System (HUD, Level-Up Screen, Boss Health Bar, Pause Menu) | Pending |
-| FAI-14 | Phase 9 | FMOD Audio Integration | Pending |
+| FAI-13 | Phase 8 | Meta-Progression & Shrine System (Divine Shards, 5 Shrines, Lore, Difficulty) | ✅ Done |
+| FAI-14 | Phase 9 | FMOD Audio Integration | ✅ Done |
 | FAI-15 | Phase 10 | URP Post-Processing (per-tier Agni visual states) | Pending |
 
 ---
@@ -128,6 +137,8 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 - `2026-05-02` — Live Session: Fixed Bosses asmdef + BossSystemTests namespace
 - `2026-05-02` — Scheduled Task: Phase 6 — 10 divine weapon Astra projectile scripts + AstraSystemTests (11 files, AGNIDAWN.Gameplay.Astras namespace)
 - `2026-05-02` — Scheduled Task: Phase 7 — Biomes (BiomeData SO, BiomeManager, SpawnManager registry, BaseEnemy slow/knockback, SudarshanaChakra fix, 14 tests) commit `b9c37c5`
+- `2026-05-02` — Scheduled Task: Phase 8 — Meta-Progression & Shrine System (SaveSystem extended, DivineShardManager, ShrineData/Manager, LoreFragment/Manager, DifficultyData/Manager, 20 EditMode tests) commit `c1ddfcf`
+- `2026-05-02` — Scheduled Task: Phase 9 — FMOD Audio Integration (AGNIDAWN.Audio assembly, AudioEventData SO, AudioManager FMOD+Unity fallback, MusicManager biome/boss adaptive music, SFXController EventBus→SFX, AudioBusController, 25 EditMode tests)
 
 ---
 *When you finish a coding session, add a row to "Last Updated" and update the "WHO BUILT WHAT" table.*

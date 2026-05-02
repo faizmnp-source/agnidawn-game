@@ -6,7 +6,8 @@
         "AGNIDAWN.Player",
         "AGNIDAWN.Enemies",
         "AGNIDAWN.Gameplay",
-        "AGNIDAWN.Bosses"
+        "AGNIDAWN.Bosses",
+        "AGNIDAWN.Audio"
     ],
     "includePlatforms": [
         "Editor"

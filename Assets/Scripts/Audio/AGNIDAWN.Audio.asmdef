@@ -1,0 +1,26 @@
+{
+    "name": "AGNIDAWN.Audio",
+    "rootNamespace": "AGNIDAWN.Audio",
+    "references": [
+        "AGNIDAWN.Core",
+        "AGNIDAWN.Player",
+        "AGNIDAWN.Enemies",
+        "AGNIDAWN.Bosses",
+        "AGNIDAWN.Gameplay"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.modules.fmod",
+            "expression": "",
+            "define": "FMOD_ENABLED"
+        }
+    ],
+    "noEngineReferences": false
+}
