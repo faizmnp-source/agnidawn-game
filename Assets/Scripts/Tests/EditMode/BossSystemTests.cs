@@ -2,7 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using AGNIDAWN.Bosses;
 
-namespace AGNIDAWN.Tests
+namespace AGNIDAWN.Tests.EditMode
 {
     /// <summary>
     /// Edit-mode unit tests for Phase 5: Boss System.
