@@ -3,7 +3,9 @@
     "rootNamespace": "AGNIDAWN.Tests.EditMode",
     "references": [
         "AGNIDAWN.Core",
-        "AGNIDAWN.Player"
+        "AGNIDAWN.Player",
+        "AGNIDAWN.Enemies",
+        "AGNIDAWN.Gameplay"
     ],
     "includePlatforms": [
         "Editor"

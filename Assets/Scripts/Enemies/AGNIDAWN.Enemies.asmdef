@@ -1,0 +1,17 @@
+{
+    "name": "AGNIDAWN.Enemies",
+    "rootNamespace": "AGNIDAWN.Enemies",
+    "references": [
+        "AGNIDAWN.Core",
+        "AGNIDAWN.Player"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
