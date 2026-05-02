@@ -1,5 +1,6 @@
 using UnityEngine;
 using AGNIDAWN.Core;
+using AGNIDAWN.Enemies;
 
 namespace AGNIDAWN.Gameplay.Astras
 {
@@ -8,7 +9,11 @@ namespace AGNIDAWN.Gameplay.Astras
     /// Behaviour: homing projectile — steers smoothly toward the nearest enemy each frame.
     /// If no enemy found, continues in original direction (never wastes a throw).
     /// On expiry, returns to pool (it is a divine disc — it always comes back).
-    /// Linear: FAI-11
+    ///
+    /// Phase 7 fix: replaced expensive FindGameObjectsWithTag (O(n) per-frame tag scan)
+    /// with SpawnManager.ActiveEnemies registry — O(1) lookup into a maintained list.
+    ///
+    /// Linear: FAI-11 / FAI-12
     /// </summary>
     public class SudarshanaChakraProjectile : BaseAstraProjectile
     {
@@ -17,10 +22,10 @@ namespace AGNIDAWN.Gameplay.Astras
 
         protected override Vector2 GetCurrentDirection()
         {
-            GameObject nearest = FindNearestEnemy();
+            Transform nearest = FindNearestEnemy();
             if (nearest == null) return _direction;
 
-            Vector2 toTarget = ((Vector2)(nearest.transform.position - transform.position)).normalized;
+            Vector2 toTarget = ((Vector2)(nearest.position - transform.position)).normalized;
             _direction = Vector2.MoveTowards(_direction, toTarget,
                              turnRate * Mathf.Deg2Rad * Time.deltaTime).normalized;
             return _direction;
@@ -37,25 +42,34 @@ namespace AGNIDAWN.Gameplay.Astras
             EventBus.Emit<string>("OnAstraSpecial", "Chakra_Hit");
         }
 
-        private GameObject FindNearestEnemy()
+        /// <summary>
+        /// Finds the nearest enemy using the SpawnManager registry.
+        /// Falls back to null if SpawnManager is unavailable (e.g. in tests).
+        /// </summary>
+        private Transform FindNearestEnemy()
         {
-            var enemies = GameObject.FindGameObjectsWithTag("Enemy");
-            var bosses  = GameObject.FindGameObjectsWithTag("Boss");
+            var sm = SpawnManager.Instance;
+            if (sm == null) return null;
 
-            GameObject nearest = null;
-            float      minDist = float.MaxValue;
-            Vector2    myPos   = transform.position;
+            Transform nearest = null;
+            float     minSqrDist = float.MaxValue;
+            Vector2   myPos = transform.position;
 
-            foreach (var e in enemies) CheckDistance(e, myPos, ref nearest, ref minDist);
-            foreach (var b in bosses)  CheckDistance(b, myPos, ref nearest, ref minDist);
+            var enemies = sm.ActiveEnemies;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                var e = enemies[i];
+                if (e == null || !e.gameObject.activeInHierarchy) continue;
+
+                float sqrDist = Vector2.SqrMagnitude((Vector2)e.transform.position - myPos);
+                if (sqrDist < minSqrDist)
+                {
+                    minSqrDist = sqrDist;
+                    nearest = e.transform;
+                }
+            }
 
             return nearest;
-        }
-
-        private static void CheckDistance(GameObject go, Vector2 from, ref GameObject nearest, ref float minDist)
-        {
-            float d = Vector2.SqrMagnitude((Vector2)go.transform.position - from);
-            if (d < minDist) { minDist = d; nearest = go; }
         }
     }
 }

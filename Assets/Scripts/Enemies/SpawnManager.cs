@@ -17,10 +17,18 @@ namespace AGNIDAWN.Enemies
     ///  15:00 - 18:00  →  Boss prep waves — max difficulty
     ///  18:00 - 20:00  →  Boss wave + continuous pressure
     ///
-    /// Linear: FAI-8
+    /// Phase 7 additions:
+    ///   - Singleton Instance for cross-system access (SudarshanaChakra registry)
+    ///   - Active enemy registry (replaces FindGameObjectsWithTag per frame)
+    ///   - Biome modifier integration via EventBus (no circular dependency with Gameplay)
+    ///
+    /// Linear: FAI-8 / FAI-12
     /// </summary>
     public class SpawnManager : MonoBehaviour
     {
+        // ── Singleton ──────────────────────────────────────────────────────
+        public static SpawnManager Instance { get; private set; }
+
         // ── Inspector ──────────────────────────────────────────────────────
         [Header("Spawn Radius")]
         [SerializeField] private float minSpawnRadius = 10f;
@@ -38,6 +46,32 @@ namespace AGNIDAWN.Enemies
         [Header("Elite Settings")]
         [SerializeField] private float eliteChanceBase  = 0.05f;  // 5% at start
         [SerializeField] private float eliteChanceMax   = 0.40f;  // 40% at 20 min
+
+        // ── Active Enemy Registry (Phase 7) ───────────────────────────────
+        private readonly List<BaseEnemy> _activeEnemies = new List<BaseEnemy>();
+
+        /// <summary>
+        /// Read-only view of all currently alive enemies.
+        /// Used by SudarshanaChakraProjectile for efficient nearest-enemy queries.
+        /// </summary>
+        public IReadOnlyList<BaseEnemy> ActiveEnemies => _activeEnemies;
+
+        /// <summary>Register a newly spawned enemy into the registry.</summary>
+        public void RegisterEnemy(BaseEnemy enemy)
+        {
+            if (enemy != null && !_activeEnemies.Contains(enemy))
+                _activeEnemies.Add(enemy);
+        }
+
+        /// <summary>Remove a dead or pooled enemy from the registry.</summary>
+        public void UnregisterEnemy(BaseEnemy enemy)
+        {
+            _activeEnemies.Remove(enemy);
+        }
+
+        // ── Biome modifier cache (updated via OnBiomeEntered EventBus) ────
+        private float _biomeSpawnIntervalMult = 1f;
+        private float _biomeEliteChanceMult   = 1f;
 
         // ── State ──────────────────────────────────────────────────────────
         private Transform _player;
@@ -64,24 +98,37 @@ namespace AGNIDAWN.Enemies
         // ──────────────────────────────────────────────────────────────────
         #region Unity Lifecycle
 
+        private void Awake()
+        {
+            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+            Instance = this;
+        }
+
         private void OnEnable()
         {
-            EventBus.On(GameManager.EVT_GAME_START,   OnGameStart);
-            EventBus.On(GameManager.EVT_GAME_PAUSE,   OnPause);
-            EventBus.On(GameManager.EVT_GAME_RESUME,  OnResume);
-            EventBus.On(GameManager.EVT_GAME_OVER,    OnStop);
-            EventBus.On(GameManager.EVT_VICTORY,      OnStop);
-            EventBus.On<GameObject>("OnEnemyDied",    OnEnemyDied);
+            EventBus.On(GameManager.EVT_GAME_START,      OnGameStart);
+            EventBus.On(GameManager.EVT_GAME_PAUSE,      OnPause);
+            EventBus.On(GameManager.EVT_GAME_RESUME,     OnResume);
+            EventBus.On(GameManager.EVT_GAME_OVER,       OnStop);
+            EventBus.On(GameManager.EVT_VICTORY,         OnStop);
+            EventBus.On<GameObject>("OnEnemyDied",       OnEnemyDied);
+            EventBus.On("OnBossSpawnBegin",              OnBossSpawnBegin);
+            EventBus.On("OnBossSpawnEnd",                OnBossSpawnEnd);
+            // Phase 7 — biome modifier cache
+            EventBus.On<BiomeData>("OnBiomeEntered",     OnBiomeEntered);
         }
 
         private void OnDisable()
         {
-            EventBus.Off(GameManager.EVT_GAME_START,  OnGameStart);
-            EventBus.Off(GameManager.EVT_GAME_PAUSE,  OnPause);
-            EventBus.Off(GameManager.EVT_GAME_RESUME, OnResume);
-            EventBus.Off(GameManager.EVT_GAME_OVER,   OnStop);
-            EventBus.Off(GameManager.EVT_VICTORY,     OnStop);
-            EventBus.Off<GameObject>("OnEnemyDied",   OnEnemyDied);
+            EventBus.Off(GameManager.EVT_GAME_START,     OnGameStart);
+            EventBus.Off(GameManager.EVT_GAME_PAUSE,     OnPause);
+            EventBus.Off(GameManager.EVT_GAME_RESUME,    OnResume);
+            EventBus.Off(GameManager.EVT_GAME_OVER,      OnStop);
+            EventBus.Off(GameManager.EVT_VICTORY,        OnStop);
+            EventBus.Off<GameObject>("OnEnemyDied",      OnEnemyDied);
+            EventBus.Off("OnBossSpawnBegin",             OnBossSpawnBegin);
+            EventBus.Off("OnBossSpawnEnd",               OnBossSpawnEnd);
+            EventBus.Off<BiomeData>("OnBiomeEntered",    OnBiomeEntered);
         }
 
         #endregion
@@ -97,8 +144,9 @@ namespace AGNIDAWN.Enemies
                 float minutes  = elapsed / 60f;
                 float t        = Mathf.Clamp01(minutes / 20f); // 0 at start, 1 at 20 min
 
-                // Dynamic interval
-                float interval = Mathf.Lerp(baseSpawnInterval, minSpawnInterval, t);
+                // Dynamic interval — multiplied by cached biome modifier
+                float interval = Mathf.Lerp(baseSpawnInterval, minSpawnInterval, t)
+                               * _biomeSpawnIntervalMult;
 
                 // Dynamic wave size
                 int count = Mathf.RoundToInt(Mathf.Lerp(baseEnemiesPerWave, maxEnemiesPerWave, t));
@@ -132,10 +180,14 @@ namespace AGNIDAWN.Enemies
                 spawnPos,
                 Quaternion.identity);
 
-            if (go != null && go.TryGetComponent<BaseEnemy>(out _))
+            if (go != null && go.TryGetComponent<BaseEnemy>(out var enemy))
             {
                 _totalSpawned++;
                 _currentAliveCount++;
+
+                // Register in active registry (Phase 7)
+                RegisterEnemy(enemy);
+
                 EventBus.Emit<Vector2>("OnEnemySpawned", spawnPos);
 
                 // Handle swarm — spawn the group together
@@ -143,9 +195,11 @@ namespace AGNIDAWN.Enemies
                 {
                     for (int i = 1; i < pool.data.swarmGroupSize; i++)
                     {
-                        Vector2 offset = Random.insideUnitCircle * 1.5f;
-                        ObjectPool.Instance?.Get($"Enemy_{pool.data.enemyId}",
+                        Vector2 offset  = Random.insideUnitCircle * 1.5f;
+                        var swarmGo = ObjectPool.Instance?.Get($"Enemy_{pool.data.enemyId}",
                             pool.prefab, spawnPos + offset, Quaternion.identity);
+                        if (swarmGo != null && swarmGo.TryGetComponent<BaseEnemy>(out var swarmEnemy))
+                            RegisterEnemy(swarmEnemy);
                         _currentAliveCount++;
                     }
                 }
@@ -188,7 +242,10 @@ namespace AGNIDAWN.Enemies
         }
 
         private bool ShouldSpawnElite(float t)
-            => Random.value < Mathf.Lerp(eliteChanceBase, eliteChanceMax, t);
+        {
+            float chance = Mathf.Lerp(eliteChanceBase, eliteChanceMax, t) * _biomeEliteChanceMult;
+            return Random.value < chance;
+        }
 
         #endregion
 
@@ -200,6 +257,9 @@ namespace AGNIDAWN.Enemies
             _isRunning = true;
             _totalSpawned = 0;
             _currentAliveCount = 0;
+            _activeEnemies.Clear();
+            _biomeSpawnIntervalMult = 1f;
+            _biomeEliteChanceMult   = 1f;
             FindPlayer();
             if (_spawnRoutine != null) StopCoroutine(_spawnRoutine);
             _spawnRoutine = StartCoroutine(SpawnLoop());
@@ -207,15 +267,30 @@ namespace AGNIDAWN.Enemies
 
         private void OnPause()  { _isRunning = false; }
         private void OnResume() { _isRunning = true; }
+
         private void OnStop()
         {
             _isRunning = false;
             if (_spawnRoutine != null) StopCoroutine(_spawnRoutine);
+            _activeEnemies.Clear();
         }
 
-        private void OnEnemyDied(GameObject _)
+        private void OnEnemyDied(GameObject go)
         {
             _currentAliveCount = Mathf.Max(0, _currentAliveCount - 1);
+            if (go != null && go.TryGetComponent<BaseEnemy>(out var enemy))
+                UnregisterEnemy(enemy);
+        }
+
+        private void OnBossSpawnBegin() { _isRunning = false; }
+        private void OnBossSpawnEnd()   { _isRunning = true;  }
+
+        /// <summary>Cache biome spawn modifiers when a new biome becomes active.</summary>
+        private void OnBiomeEntered(BiomeData biome)
+        {
+            if (biome == null) return;
+            _biomeSpawnIntervalMult = biome.spawnIntervalMultiplier;
+            _biomeEliteChanceMult   = biome.eliteChanceMultiplier;
         }
 
         private void FindPlayer()

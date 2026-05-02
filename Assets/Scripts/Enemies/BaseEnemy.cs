@@ -19,7 +19,13 @@ namespace AGNIDAWN.Enemies
     ///   - Yaksha: slow tank that shields nearby allies
     ///   - Brahmarakshasa: hangs back, summons minions from a distance
     ///
-    /// Linear: FAI-8
+    /// Phase 7 additions:
+    ///   - OnSlowApplied consumer (Varunastra slow effect)
+    ///   - OnKnockbackApplied consumer (Vayuastra knockback effect)
+    ///   - Biome speed/damage modifiers applied via OnBiomeEntered EventBus event
+    ///     (EventBus used to avoid circular dependency with AGNIDAWN.Gameplay)
+    ///
+    /// Linear: FAI-8 / FAI-12
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(HealthSystem))]
@@ -30,9 +36,9 @@ namespace AGNIDAWN.Enemies
         [SerializeField] protected bool      isElite = false;
 
         // ── Components ────────────────────────────────────────────────────
-        protected Rigidbody2D  _rb;
-        protected HealthSystem _health;
-        protected Animator     _anim;
+        protected Rigidbody2D    _rb;
+        protected HealthSystem   _health;
+        protected Animator       _anim;
         protected SpriteRenderer _sprite;
 
         // ── State ──────────────────────────────────────────────────────────
@@ -44,13 +50,23 @@ namespace AGNIDAWN.Enemies
         protected float     _specialTimer;
         protected bool      _isDead;
 
-        // ── Applied stats (elite-adjusted) ────────────────────────────────
+        // ── Applied stats (elite-adjusted + biome-adjusted) ───────────────
         protected float MaxHealth;
         protected float MoveSpeed;
         protected float Damage;
         protected float AttackRange;
         protected float AttackCooldown;
         protected float XPOnDeath;
+
+        // ── Biome modifier cache ───────────────────────────────────────────
+        private float _biomeSpdMult = 1f;
+        private float _biomeDmgMult = 1f;
+
+        // ── Status effects ────────────────────────────────────────────────
+        private float _slowMultiplier  = 1f;   // 1 = no slow
+        private float _slowTimer       = 0f;
+        private bool  _isKnockedBack   = false;
+        private float _knockbackTimer  = 0f;
 
         // ── Anim hashes ───────────────────────────────────────────────────
         protected static readonly int ANIM_WALK   = Animator.StringToHash("Walk");
@@ -67,7 +83,7 @@ namespace AGNIDAWN.Enemies
             _anim   = GetComponentInChildren<Animator>();
             _sprite = GetComponentInChildren<SpriteRenderer>();
 
-            _rb.gravityScale  = 0f;
+            _rb.gravityScale   = 0f;
             _rb.freezeRotation = true;
 
             ApplyStats();
@@ -75,19 +91,36 @@ namespace AGNIDAWN.Enemies
 
         protected virtual void OnEnable()
         {
-            _state     = AIState.Idle;
-            _isDead    = false;
-            _attackTimer  = 0f;
-            _specialTimer = 0f;
+            _state          = AIState.Idle;
+            _isDead         = false;
+            _attackTimer    = 0f;
+            _specialTimer   = 0f;
+            _slowMultiplier = 1f;
+            _slowTimer      = 0f;
+            _isKnockedBack  = false;
+            _knockbackTimer = 0f;
 
-            EventBus.On<GameObject>("OnPlayerDied", OnPlayerDied);
-            EventBus.On<GameObject>("OnEnemyDied",  CheckSelfDeath);
+            // Re-apply stats with current biome modifiers (pool re-use)
+            ApplyStats();
+
+            EventBus.On<GameObject>("OnPlayerDied",                       OnPlayerDied);
+            EventBus.On<GameObject>("OnEnemyDied",                        CheckSelfDeath);
+            EventBus.On<GameObject, float, float>("OnSlowApplied",        OnSlowApplied);
+            EventBus.On<GameObject, Vector2, float>("OnKnockbackApplied", OnKnockbackApplied);
+            // Phase 7 — listen for biome transitions to refresh stat modifiers
+            EventBus.On<BiomeData>("OnBiomeEntered",                      OnBiomeEntered);
         }
 
         protected virtual void OnDisable()
         {
-            EventBus.Off<GameObject>("OnPlayerDied", OnPlayerDied);
-            EventBus.Off<GameObject>("OnEnemyDied",  CheckSelfDeath);
+            EventBus.Off<GameObject>("OnPlayerDied",                       OnPlayerDied);
+            EventBus.Off<GameObject>("OnEnemyDied",                        CheckSelfDeath);
+            EventBus.Off<GameObject, float, float>("OnSlowApplied",        OnSlowApplied);
+            EventBus.Off<GameObject, Vector2, float>("OnKnockbackApplied", OnKnockbackApplied);
+            EventBus.Off<BiomeData>("OnBiomeEntered",                      OnBiomeEntered);
+
+            // Unregister from SpawnManager registry when returned to pool
+            SpawnManager.Instance?.UnregisterEnemy(this);
         }
 
         protected virtual void Update()
@@ -102,6 +135,7 @@ namespace AGNIDAWN.Enemies
         protected virtual void FixedUpdate()
         {
             if (_isDead || !GameManager.Instance.IsRunning) return;
+            if (_isKnockedBack) return; // knockback overrides movement this frame
             if (_state == AIState.Chase) MoveTowardTarget();
         }
 
@@ -127,7 +161,7 @@ namespace AGNIDAWN.Enemies
                     break;
 
                 case AIState.Chase:
-                    if (dist > data.deAggroRadius)          { _state = AIState.Idle; break; }
+                    if (dist > data.deAggroRadius)          { _state = AIState.Idle;   break; }
                     if (dist <= data.attackRange)           { _state = AIState.Attack; break; }
                     if (CanUseSpecial(dist))                { StartCoroutine(UseSpecial()); break; }
                     break;
@@ -150,7 +184,8 @@ namespace AGNIDAWN.Enemies
             if (_player == null) return;
 
             Vector2 dir = GetMoveDirection();
-            _rb.linearVelocity = dir * MoveSpeed;
+            // Apply slow multiplier on top of biome-adjusted speed
+            _rb.linearVelocity = dir * (MoveSpeed * _slowMultiplier);
 
             // Flip sprite
             if (_sprite != null && dir.x != 0)
@@ -188,6 +223,82 @@ namespace AGNIDAWN.Enemies
 
         /// Override per enemy type to implement unique mythological ability
         protected virtual IEnumerator DoSpecialAbility() { yield return null; }
+
+        #endregion
+
+        // ──────────────────────────────────────────────────────────────────
+        #region Status Effects (Phase 7)
+
+        /// <summary>
+        /// Varunastra emits OnSlowApplied (target, speedMultiplier, duration).
+        /// Only applies if this GameObject is the target.
+        /// </summary>
+        private void OnSlowApplied(GameObject target, float speedMult, float duration)
+        {
+            if (target != gameObject) return;
+            _slowMultiplier = Mathf.Clamp01(speedMult);
+            _slowTimer      = duration;
+
+            // Blue tint while slowed
+            if (_sprite != null)
+                _sprite.color = Color.Lerp(_sprite.color, new Color(0.4f, 0.6f, 1f, 1f), 0.6f);
+        }
+
+        /// <summary>
+        /// Vayuastra emits OnKnockbackApplied (target, force, duration).
+        /// Applies an impulse and temporarily disables normal AI movement.
+        /// </summary>
+        private void OnKnockbackApplied(GameObject target, Vector2 force, float duration)
+        {
+            if (target != gameObject) return;
+            _isKnockedBack  = true;
+            _knockbackTimer = duration;
+            _rb.linearVelocity = force;
+        }
+
+        private void TickStatusEffects()
+        {
+            // Slow expiry
+            if (_slowTimer > 0f)
+            {
+                _slowTimer -= Time.deltaTime;
+                if (_slowTimer <= 0f)
+                {
+                    _slowMultiplier = 1f;
+                    // Restore original tint
+                    if (_sprite != null)
+                        _sprite.color = (isElite && data != null) ? data.eliteTintColor : Color.white;
+                }
+            }
+
+            // Knockback expiry
+            if (_isKnockedBack)
+            {
+                _knockbackTimer -= Time.deltaTime;
+                if (_knockbackTimer <= 0f)
+                {
+                    _isKnockedBack = false;
+                    _rb.linearVelocity = Vector2.zero;
+                }
+            }
+        }
+
+        #endregion
+
+        // ──────────────────────────────────────────────────────────────────
+        #region Biome Modifiers (Phase 7)
+
+        /// <summary>
+        /// Cache biome multipliers and re-apply stats when a biome transition fires.
+        /// Uses EventBus to avoid a circular dependency with AGNIDAWN.Gameplay.
+        /// </summary>
+        private void OnBiomeEntered(BiomeData biome)
+        {
+            if (biome == null) return;
+            _biomeSpdMult = biome.enemySpeedMultiplier;
+            _biomeDmgMult = biome.enemyDamageMultiplier;
+            ApplyStats();
+        }
 
         #endregion
 
@@ -242,17 +353,33 @@ namespace AGNIDAWN.Enemies
         {
             if (_attackTimer  > 0f) _attackTimer  -= Time.deltaTime;
             if (_specialTimer > 0f) _specialTimer -= Time.deltaTime;
+            TickStatusEffects();
         }
 
         private void ApplyStats()
         {
             if (data == null) return;
-            MaxHealth     = isElite ? data.maxHealth * data.eliteHealthMult : data.maxHealth;
-            MoveSpeed     = isElite ? data.moveSpeed * data.eliteSpeedMult  : data.moveSpeed;
-            Damage        = isElite ? data.damage    * data.eliteDamageMult : data.damage;
-            AttackRange   = data.attackRange;
+
+            float speedMult  = _biomeSpdMult;
+            float damageMult = _biomeDmgMult;
+
+            // Elite multipliers stack on top of biome multipliers
+            if (isElite)
+            {
+                MaxHealth = data.maxHealth * data.eliteHealthMult;
+                speedMult  *= data.eliteSpeedMult;
+                damageMult *= data.eliteDamageMult;
+            }
+            else
+            {
+                MaxHealth = data.maxHealth;
+            }
+
+            MoveSpeed      = data.moveSpeed      * speedMult;
+            Damage         = data.damage         * damageMult;
+            AttackRange    = data.attackRange;
             AttackCooldown = data.attackCooldown;
-            XPOnDeath     = isElite ? data.xpOnDeath * 3f : data.xpOnDeath;
+            XPOnDeath      = isElite ? data.xpOnDeath * 3f : data.xpOnDeath;
 
             if (isElite && _sprite != null) _sprite.color = data.eliteTintColor;
         }
