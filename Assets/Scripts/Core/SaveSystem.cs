@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -46,6 +47,18 @@ namespace AGNIDAWN.Core
             public float  sfxVolume              = 1f;
             public bool   screenShake            = true;
             public bool   reducedVFX             = false;
+
+            // Phase 8 — Divine Shards meta-currency
+            public int            divineShards         = 0;
+
+            // Phase 8 — Shrine unlocks (list of ShrineData.shrineId strings)
+            public List<string>   unlockedShrineIds    = new List<string>();
+
+            // Phase 8 — Lore fragments collected (list of LoreFragment.fragmentId strings)
+            public List<string>   collectedLoreIds     = new List<string>();
+
+            // Phase 8 — Selected difficulty ("Normal" | "Tandav" | "Pralaya")
+            public string         selectedDifficultyId = "Normal";
 
             // Analytics / telemetry flags
             public string lastPlayedVersion      = "";
@@ -153,6 +166,83 @@ namespace AGNIDAWN.Core
             if (time > d.bestRunTimeSeconds)  d.bestRunTimeSeconds  = time;
             if (wave > d.highestWaveReached)  d.highestWaveReached  = wave;
             Save(d);
+        }
+
+        // ── Phase 8 — Divine Shards ──────────────────────────────────────
+
+        public static int GetDivineShards()             => Load().divineShards;
+
+        public static bool CanAffordShards(int cost)    => Load().divineShards >= cost;
+
+        public static void AddDivineShards(int amount)
+        {
+            if (amount <= 0) return;
+            Load().divineShards += amount;
+            Save();
+        }
+
+        public static bool SpendDivineShards(int cost)
+        {
+            var d = Load();
+            if (d.divineShards < cost) return false;
+            d.divineShards -= cost;
+            Save(d);
+            return true;
+        }
+
+        // ── Phase 8 — Shrine Unlocks ─────────────────────────────────────
+
+        public static bool IsShrineUnlocked(string shrineId)
+        {
+            var list = Load().unlockedShrineIds;
+            return list != null && list.Contains(shrineId);
+        }
+
+        public static void UnlockShrine(string shrineId)
+        {
+            var d = Load();
+            if (d.unlockedShrineIds == null) d.unlockedShrineIds = new List<string>();
+            if (!d.unlockedShrineIds.Contains(shrineId))
+            {
+                d.unlockedShrineIds.Add(shrineId);
+                Save(d);
+            }
+        }
+
+        public static List<string> GetUnlockedShrineIds()
+            => Load().unlockedShrineIds ?? new List<string>();
+
+        // ── Phase 8 — Lore Fragments ─────────────────────────────────────
+
+        public static bool IsLoreCollected(string fragmentId)
+        {
+            var list = Load().collectedLoreIds;
+            return list != null && list.Contains(fragmentId);
+        }
+
+        public static void CollectLore(string fragmentId)
+        {
+            var d = Load();
+            if (d.collectedLoreIds == null) d.collectedLoreIds = new List<string>();
+            if (!d.collectedLoreIds.Contains(fragmentId))
+            {
+                d.collectedLoreIds.Add(fragmentId);
+                Save(d);
+            }
+        }
+
+        public static List<string> GetCollectedLoreIds()
+            => Load().collectedLoreIds ?? new List<string>();
+
+        // ── Phase 8 — Difficulty ─────────────────────────────────────────
+
+        public static string GetSelectedDifficultyId()
+            => Load().selectedDifficultyId ?? "Normal";
+
+        public static void SetSelectedDifficulty(string difficultyId)
+        {
+            Load().selectedDifficultyId = difficultyId;
+            Save();
         }
 
         #endregion

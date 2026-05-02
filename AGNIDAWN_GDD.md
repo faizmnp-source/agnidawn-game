@@ -404,4 +404,4 @@ Everything data-driven via ScriptableObjects:
 
 ---
 
-*"Agni Prajvalito Deva" — May
+*"Agni Prajvalito Deva" — May the divine fire be lit.*
