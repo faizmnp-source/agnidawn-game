@@ -16,6 +16,7 @@
 | Phase 4 | Agni Kund 5-tier system (AgniKund.cs, AgniKundTests, EnemyDataTests) | Live Session | `bc66d60` | ✅ Done |
 | Phase 5 | Boss System (BaseBoss, BossData, BossManager, Ravana, Mahishasura, Kali, Vritra, BossSystemTests) | Scheduled Task | `a3effd9` | ✅ Done |
 | Fix | AGNIDAWN.Bosses.asmdef + BossSystemTests namespace fix | Live Session | pending | 🔄 In Progress |
+| Phase 6 | Astra Weapons — BaseAstraProjectile + 10 divine weapon scripts + AstraSystemTests | Scheduled Task | pending | ✅ Done |
 
 ---
 
@@ -56,6 +57,15 @@ AGNIDAWN.Tests.EditMode (refs all above, Editor-only)
 | `OnMinutePassed` | int | GameManager | BossManager listens |
 | `OnBossSpawnBegin` | void | BossManager | SpawnManager pauses |
 | `OnBossSpawnEnd` | void | BossManager | SpawnManager resumes |
+| `OnAstraFired` | AstraData | AstraController | UI / audio listens |
+| `OnAstraEquipped` | AstraData | AstraController | UI listens |
+| `OnAstraUpgraded` | AstraData, int | AstraController | UI listens |
+| `OnAstraRemoved` | AstraData | AstraController | UI listens |
+| `OnAstraSpecial` | string | Astra projectiles | VFX / audio listeners (Phase 6) |
+| `OnAoEDetonation` | float, Vector2 | Brahmastra/Pashupatastra | VFX radius + shake |
+| `OnSlowApplied` | GameObject, float, float | Varunastra | Enemy movement (speed, duration) |
+| `OnKnockbackApplied` | GameObject, Vector2, float | Vayuastra | Enemy Rigidbody2D |
+| `OnLightningChain` | Vector2, Vector2 | Vajra | VFX line renderer |
 
 ### ObjectPool Key Convention
 Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`, `Boss_Ravana`
@@ -81,13 +91,16 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 - [ ] `BaseBoss.OnEnable()` subscribes to `OnPlayerDamagedWithSource` but should listen to its own HealthSystem's damage event — low priority
 - [ ] `GameManager.cs` does not emit `OnMinutePassed` yet — BossManager needs this wired in GameManager.Update()
 - [ ] No `QualityManager.cs` yet (FAI auto-detect GPU tier)
+- [ ] Phase 6 astra prefabs not created yet — each Astra script requires a Unity prefab with its component assigned in AstraData.projectilePrefab
+- [ ] `OnSlowApplied` / `OnKnockbackApplied` events emitted but no consumer yet — implement in BaseEnemy (Phase 7 or later)
+- [ ] SudarshanaChakra homing `FindNearestEnemy()` uses FindGameObjectsWithTag (expensive) — replace with SpawnManager registry in Phase 7
 
 ---
 
 ## NEXT PHASES (from Linear)
 | Ticket | Phase | What | Status |
 |--------|-------|------|--------|
-| FAI-11 | Phase 6 | Divine Weapon Astras — 10 weapons with unique projectile scripts (Trishul, Gandiv, Sudarshana Chakra, Brahmastra, Pashupatastra, Nagastra, Varunastra, Vayuastra, Agneyastra, Vajra) | 🔜 Next |
+| FAI-11 | Phase 6 | Divine Weapon Astras — 10 weapons with unique projectile scripts (Trishul, Gandiv, Sudarshana Chakra, Brahmastra, Pashupatastra, Nagastra, Varunastra, Vayuastra, Agneyastra, Vajra) | ✅ Done |
 | FAI-12 | Phase 7 | Biomes (Forest, Desert, Mountain, Ocean, Underworld) | Pending |
 | FAI-13 | Phase 8 | UI System (HUD, Level-Up Screen, Boss Health Bar, Pause Menu) | Pending |
 | FAI-14 | Phase 9 | FMOD Audio Integration | Pending |
@@ -110,6 +123,7 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 - `2026-05-02` — Live Session: Phase 1-4, asmdef fixes, lock system, this handover doc
 - `2026-05-02` — Scheduled Task: Phase 5 Boss System (commit `a3effd9`)
 - `2026-05-02` — Live Session: Fixed Bosses asmdef + BossSystemTests namespace
+- `2026-05-02` — Scheduled Task: Phase 6 — 10 divine weapon Astra projectile scripts + AstraSystemTests (11 files, AGNIDAWN.Gameplay.Astras namespace)
 
 ---
 *When you finish a coding session, add a row to "Last Updated" and update the "WHO BUILT WHAT" table.*
