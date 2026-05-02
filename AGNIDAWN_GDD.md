@@ -1,6 +1,6 @@
 # 🔥 AGNIDAWN — Game Design Document
 ### *Indian Mythology Survival Roguelite*
-**Version:** 0.1 | **Date:** 2026-05-01 | **Engine:** Unity 2022 LTS + URP
+**Version:** 0.2 | **Date:** 2026-05-02 | **Engine:** Unity 6 (6000.4.2f1) + URP 17.4.0
 
 ---
 
@@ -392,7 +392,7 @@ Everything data-driven via ScriptableObjects:
 
 | Tool | Purpose |
 |------|---------|
-| Unity 2022 LTS + URP | Game engine |
+| Unity 6 (6000.4.2f1) + URP 17.4.0 | Game engine |
 | Blender 5.1 | 3D character/enemy modelling, sprite renders |
 | FMOD Studio | Adaptive audio |
 | DaVinci Resolve | Trailer, cutscenes |
