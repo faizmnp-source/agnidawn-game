@@ -1,0 +1,22 @@
+{
+    "name": "AGNIDAWN.Visuals",
+    "rootNamespace": "AGNIDAWN.Visuals",
+    "references": [
+        "AGNIDAWN.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.render-pipelines.universal",
+            "expression": "",
+            "define": "URP_ENABLED"
+        }
+    ],
+    "noEngineReferences": false
+}
