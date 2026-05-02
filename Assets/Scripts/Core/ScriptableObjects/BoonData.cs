@@ -40,31 +40,18 @@ namespace AGNIDAWN.Core
         public float             specialValue  = 0f;
 
         // ── Apply ─────────────────────────────────────────────────────────
+        // BoonData lives in Core — it cannot reference Player types directly.
+        // Apply() emits a single EventBus event; BoonApplier (Player assembly)
+        // listens and applies the actual stat changes. Clean separation.
 
         public void Apply(GameObject player)
         {
             if (player == null) return;
 
-            if (player.TryGetComponent<Player.PlayerController>(out var pc))
-            {
-                pc.MoveSpeedMult        += movespeedBonus;
-                pc.DashCooldownMult     = Mathf.Max(0.1f, pc.DashCooldownMult - dashCooldownBonus);
-            }
+            // BoonApplier on the player listens to this and applies all modifiers
+            EventBus.Emit<BoonData, GameObject>("OnBoonApplyRequest", this, player);
 
-            if (player.TryGetComponent<HealthSystem>(out var hp))
-            {
-                hp.DamageReductionMult  = Mathf.Max(0f, hp.DamageReductionMult - damageMultBonus);
-                hp.HealingMult          += healingMultBonus;
-                if (maxHealthBonus > 0f) hp.AddMaxHealth(maxHealthBonus);
-            }
-
-            if (player.TryGetComponent<Player.AstraController>(out var ac))
-            {
-                ac.GlobalDamageMult     += damageMultBonus;
-                ac.GlobalCooldownMult   = Mathf.Max(0.1f, ac.GlobalCooldownMult - cooldownMultBonus);
-            }
-
-            // Special effects handled by dedicated systems via EventBus
+            // Special effects handled by dedicated systems
             if (specialEffect != BoonSpecialEffect.None)
                 EventBus.Emit<BoonData>("OnBoonSpecialEffect", this);
         }

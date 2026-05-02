@@ -1,0 +1,4 @@
+﻿<Solution>
+  <Project Path="AGNIDAWN.Tests.EditMode.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+</Solution>

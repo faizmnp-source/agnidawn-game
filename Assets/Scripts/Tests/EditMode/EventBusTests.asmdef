@@ -2,10 +2,12 @@
     "name": "AGNIDAWN.Tests.EditMode",
     "rootNamespace": "AGNIDAWN.Tests.EditMode",
     "references": [
-        "GUID:27619889b8ba8c24980f49ee34dbb14a",
-        "AGNIDAWN.Core"
+        "AGNIDAWN.Core",
+        "AGNIDAWN.Player"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
