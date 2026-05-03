@@ -7,34 +7,31 @@ namespace AGNIDAWN.Bootstrap
     /// Loads per-character painted sprite frames from Resources/Characters/
     /// and wires up a CharacterAnimator.  Zero-prefab, zero-ScriptableObject.
     ///
-    /// File naming convention (in Assets/Resources/Characters/):
-    ///   {Name}_idle_{0..N}.png
-    ///   {Name}_walk_{0..N}.png
+    /// Assets must be imported as textureType:8 (Sprite) in their .meta files.
+    /// File naming: Resources/Characters/{Name}_{idle|walk}_{0..N}.png
+    /// Uses Resources.Load<Sprite> — no runtime Sprite.Create needed.
     /// </summary>
     public static class CharacterSpriteFactory
     {
-        // ── Frame counts per character (idle count, walk count, desired world height in units)
-        private static readonly Dictionary<string, (int Idle, int Walk, float WorldH)> CharInfo =
+        // ── Frame counts per character (idle count, walk count)
+        private static readonly Dictionary<string, (int Idle, int Walk)> CharInfo =
             new()
             {
-                { "Agni",     (2, 2, 1.6f) },
-                { "Asura",    (8, 8, 1.3f) },
-                { "Naga",     (3, 3, 1.3f) },
-                { "Pisacha",  (2, 2, 1.2f) },
-                { "Vetala",   (3, 3, 1.1f) },
-                { "Rakshasa", (3, 3, 1.3f) },
+                { "Agni",     (2, 2) },
+                { "Asura",    (8, 8) },
+                { "Naga",     (3, 3) },
+                { "Pisacha",  (2, 2) },
+                { "Vetala",   (3, 3) },
+                { "Rakshasa", (3, 3) },
             };
 
-        // ── Public API ───────────────────────────────────────────────────────
+        // ── Public API ────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Adds SpriteRenderer + CharacterAnimator to <paramref name="go"/>,
-        /// loads all frames for <paramref name="charName"/> and starts idle.
+        /// Adds / configures SpriteRenderer + CharacterAnimator on <paramref name="go"/>,
+        /// loads all Sprite frames and starts idle animation.
+        /// Returns null on load failure (caller should use a fallback).
         /// </summary>
-        /// <param name="go">Target GameObject (must already exist).</param>
-        /// <param name="charName">One of: Agni, Asura, Naga, Pisacha, Vetala, Rakshasa.</param>
-        /// <param name="sortingOrder">SpriteRenderer sorting order.</param>
-        /// <returns>The CharacterAnimator component, or null on load failure.</returns>
         public static CharacterAnimator Setup(GameObject go, string charName, int sortingOrder = 5)
         {
             if (!CharInfo.TryGetValue(charName, out var info))
@@ -43,79 +40,58 @@ namespace AGNIDAWN.Bootstrap
                 return null;
             }
 
-            // ── Load first idle frame to compute PPU ─────────────────────────
-            var firstTex = Resources.Load<Texture2D>($"Characters/{charName}_idle_0");
-            if (firstTex == null)
-            {
-                Debug.LogWarning($"[CharacterSpriteFactory] Missing texture: Characters/{charName}_idle_0");
-                return null;
-            }
-
-            // pixels-per-unit so the sprite is exactly worldH units tall
-            float ppu = Mathf.Max(1f, firstTex.height / info.WorldH);
-
-            // ── Load sprite arrays ───────────────────────────────────────────
-            var idleSprites = LoadFrames(charName, "idle", info.Idle, ppu);
-            var walkSprites = LoadFrames(charName, "walk", info.Walk, ppu);
-
+            // ── Load idle frames (at least the first must exist) ──────────────
+            var idleSprites = LoadSprites(charName, "idle", info.Idle);
             if (idleSprites == null || idleSprites.Length == 0)
             {
-                Debug.LogWarning($"[CharacterSpriteFactory] No idle frames loaded for {charName}");
+                Debug.LogWarning(
+                    $"[CharacterSpriteFactory] No idle sprites loaded for {charName}. " +
+                    $"Ensure Assets/Resources/Characters/{charName}_idle_0.png is imported " +
+                    $"as textureType:8 (Sprite).");
                 return null;
             }
 
-            // ── Configure SpriteRenderer ─────────────────────────────────────
+            var walkSprites = LoadSprites(charName, "walk", info.Walk);
+
+            // ── Configure SpriteRenderer ──────────────────────────────────────
             var sr = go.GetComponent<SpriteRenderer>();
             if (sr == null) sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = idleSprites[0];
             sr.sortingOrder = sortingOrder;
-            sr.color        = Color.white; // painted art — no tinting
+            sr.color        = Color.white;
 
-            // ── Wire CharacterAnimator ───────────────────────────────────────
+            // ── Wire CharacterAnimator ────────────────────────────────────────
             var anim = go.AddComponent<CharacterAnimator>();
             anim.RegisterAnimation("idle", idleSprites);
-
-            if (walkSprites != null && walkSprites.Length > 0)
-                anim.RegisterAnimation("walk", walkSprites);
-            else
-                anim.RegisterAnimation("walk", idleSprites); // fallback: walk = idle
-
+            anim.RegisterAnimation("walk",
+                (walkSprites != null && walkSprites.Length > 0) ? walkSprites : idleSprites);
             anim.Play("idle");
             anim.AutoVelocitySwitch = true;
 
             return anim;
         }
 
-        // ── Private helpers ──────────────────────────────────────────────────
+        // ── Private helpers ───────────────────────────────────────────────────
 
-        private static Sprite[] LoadFrames(string charName, string anim, int count, float ppu)
+        private static Sprite[] LoadSprites(string charName, string animName, int count)
         {
-            var result = new List<Sprite>(count);
-            Sprite fallback = null;
+            var result   = new List<Sprite>(count);
+            Sprite last  = null;
 
             for (int i = 0; i < count; i++)
             {
-                string path = $"Characters/{charName}_{anim}_{i}";
-                var tex = Resources.Load<Texture2D>(path);
-                if (tex == null)
+                string path   = $"Characters/{charName}_{animName}_{i}";
+                var    sprite = Resources.Load<Sprite>(path);
+
+                if (sprite == null)
                 {
-                    if (fallback != null)
-                        result.Add(fallback);   // reuse last good frame
+                    Debug.LogWarning($"[CharacterSpriteFactory] Missing sprite: {path}");
+                    if (last != null) result.Add(last);   // pad with last good frame
                     continue;
                 }
 
-                tex.filterMode = FilterMode.Bilinear;
-                tex.wrapMode   = TextureWrapMode.Clamp;
-
-                var sprite = Sprite.Create(
-                    tex,
-                    new Rect(0, 0, tex.width, tex.height),
-                    new Vector2(0.5f, 0.5f), // pivot centre
-                    ppu
-                );
-
                 result.Add(sprite);
-                fallback = sprite;
+                last = sprite;
             }
 
             return result.ToArray();

@@ -25,8 +25,9 @@ namespace AGNIDAWN.Bootstrap
     public static class GameBootstrap
     {
         // ── Shared scene refs (set during build, used by runtime components) ──
-        internal static Transform PlayerTransform;
+        internal static Transform    PlayerTransform;
         internal static AgniKundMini AgniKund;
+        private  static CameraFollow _cameraFollow;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Init()
@@ -50,6 +51,7 @@ namespace AGNIDAWN.Bootstrap
         {
             EnsureSingletons();
             BuildCamera();
+            BuildArena();
             BuildAgniKund();
             BuildPlayer();
             BuildEnemySpawner();
@@ -108,12 +110,46 @@ namespace AGNIDAWN.Bootstrap
             }
 
             cam.clearFlags        = CameraClearFlags.SolidColor;
-            cam.backgroundColor   = new Color(0.06f, 0.04f, 0.03f, 1f);
+            cam.backgroundColor   = new Color(0.04f, 0.02f, 0.02f, 1f);
             cam.orthographic      = true;
-            cam.orthographicSize  = 9f;
-            cam.transform.position = new Vector3(0, 0, -10f);
+            cam.orthographicSize  = 6f;   // tighter view — characters more visible
+            // Start at player spawn so there is no initial black-band pan
+            cam.transform.position = new Vector3(0f, 3f, -10f);
 
-            cam.gameObject.AddComponent<CameraFollow>();
+            var follow = cam.gameObject.AddComponent<CameraFollow>();
+            // Store ref so BuildPlayer can wire the target directly
+            _cameraFollow = follow;
+        }
+
+        #endregion
+
+        // ──────────────────────────────────────────────────────────────────────
+        #region Arena Background
+
+        private static void BuildArena()
+        {
+            var arenaSprite = Resources.Load<Sprite>("Arena");
+            if (arenaSprite == null)
+            {
+                Debug.LogWarning("[GameBootstrap] Arena.png not found in Resources — using solid background.");
+                return;
+            }
+
+            var go = new GameObject("ArenaBackground");
+            go.transform.position = Vector3.zero;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = arenaSprite;
+            sr.sortingOrder = -100;
+
+            // Scale to fill a portrait screen:
+            // orthographicSize=6 → 12 world units tall; assume ~0.48 aspect on fold phone
+            float camH = 6f * 2f;              // 12 units
+            float camW = camH * 0.50f;         // 6 units (conservative portrait width)
+            float sw   = arenaSprite.bounds.size.x;
+            float sh   = arenaSprite.bounds.size.y;
+            // Scale up whichever axis is needed to fill, keep aspect ratio
+            float scale = Mathf.Max(camW / sw, camH / sh);
+            go.transform.localScale = new Vector3(scale, scale, 1f);
         }
 
         #endregion
@@ -127,18 +163,30 @@ namespace AGNIDAWN.Bootstrap
             go.transform.position = Vector3.zero;
             go.tag = "AgniKund";
 
-            // Main body — large golden circle
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite     = SpriteFactory.CreateCircle(new Color(1f, 0.72f, 0.08f), 96);
-            sr.sortingOrder = 0;
-            go.transform.localScale = Vector3.one * 1.5f;
+            sr.sortingOrder = 2;
 
-            // Ring overlay
-            var ringGo = new GameObject("Ring");
-            ringGo.transform.SetParent(go.transform, false);
-            var ringSr = ringGo.AddComponent<SpriteRenderer>();
-            ringSr.sprite = SpriteFactory.CreateRing(new Color(1f, 0.45f, 0.0f), 96, 8f);
-            ringSr.sortingOrder = 1;
+            // Try to use the painted Agni Kund sprite
+            var kundSprite = Resources.Load<Sprite>("AgniKund");
+            if (kundSprite != null)
+            {
+                sr.sprite = kundSprite;
+                sr.color  = Color.white;
+                // Sprite PPU set to ~3 world units tall in meta; scale to 2u
+                go.transform.localScale = Vector3.one;
+            }
+            else
+            {
+                // Fallback: procedural golden circle
+                sr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.72f, 0.08f), 96);
+                go.transform.localScale = Vector3.one * 1.5f;
+
+                var ringGo = new GameObject("Ring");
+                ringGo.transform.SetParent(go.transform, false);
+                var ringSr = ringGo.AddComponent<SpriteRenderer>();
+                ringSr.sprite = SpriteFactory.CreateRing(new Color(1f, 0.45f, 0.0f), 96, 8f);
+                ringSr.sortingOrder = 3;
+            }
 
             // Health & logic
             var kund = go.AddComponent<AgniKundMini>();
@@ -146,6 +194,11 @@ namespace AGNIDAWN.Bootstrap
 
             // Pulsing animation
             go.AddComponent<AgniKundPulser>();
+
+            // Physics: so enemies can hit it
+            var col = go.AddComponent<CircleCollider2D>();
+            col.radius    = 0.8f;
+            col.isTrigger = true;
         }
 
         #endregion
@@ -195,9 +248,8 @@ namespace AGNIDAWN.Bootstrap
             // Cache for other systems
             PlayerTransform = go.transform;
 
-            // Wire camera follow
-            var camFollow = Object.FindAnyObjectByType<CameraFollow>();
-            if (camFollow != null) camFollow.Target = go.transform;
+            // Wire camera follow using the ref stored during BuildCamera
+            if (_cameraFollow != null) _cameraFollow.Target = go.transform;
 
             // Build virtual joystick UI (must come after canvas exists or build inline)
             BuildInputUI(controller);
@@ -849,7 +901,11 @@ namespace AGNIDAWN.Bootstrap
         {
             var go = new GameObject("SimpleEnemy");
             go.tag   = "Enemy";
-            go.layer = 8; // Enemy layer (defined in ProjectSettings/TagManager.asset)
+            go.layer = LayerMask.NameToLayer("Enemy");
+            if (go.layer < 0) go.layer = 0; // fallback to Default if layer not found
+
+            // Place offscreen at start so inactive pool members are invisible
+            go.transform.position = new Vector3(-9999f, -9999f, 0f);
 
             // Painted character sprite — fallback to tinted circle if load fails
             var sr = go.AddComponent<SpriteRenderer>();
@@ -873,16 +929,8 @@ namespace AGNIDAWN.Bootstrap
             var se = go.AddComponent<SimpleEnemy>();
             se.TintColor = tint;
 
-            // HP bar (tiny, above enemy)
-            var hpGo  = new GameObject("HPBar");
-            hpGo.transform.SetParent(go.transform, false);
-            hpGo.transform.localPosition = new Vector3(0f, 0.75f, 0f);
-            hpGo.transform.localScale    = new Vector3(1.4f, 0.18f, 1f);
-            var hpSr  = hpGo.AddComponent<SpriteRenderer>();
-            hpSr.sprite      = SpriteFactory.CreateSquare(Color.white, 32, 2f);
-            hpSr.color       = new Color(0.15f, 0.9f, 0.15f);
-            hpSr.sortingOrder = 6;
-            hpGo.AddComponent<EnemyHPBar>().Enemy = se;
+            // NOTE: no debug HP bars — removed per visual requirements.
+            // HP feedback comes from the HUD bar, not per-enemy rectangles.
 
             return go;
         }

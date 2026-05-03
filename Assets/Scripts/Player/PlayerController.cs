@@ -154,16 +154,20 @@ namespace AGNIDAWN.Player
                 : (spriteRoot != null && spriteRoot.localScale.x < 0 ? Vector2.left : Vector2.right);
 
             EventBus.Emit("OnPlayerDash", transform.position);
-            Physics2D.IgnoreLayerCollision(gameObject.layer,
-                LayerMask.NameToLayer("Enemy"), true);
+            int _enemyLayer = LayerMask.NameToLayer("Enemy");
+            if (_enemyLayer >= 0 && _enemyLayer <= 31 &&
+                gameObject.layer >= 0 && gameObject.layer <= 31)
+                Physics2D.IgnoreLayerCollision(gameObject.layer, _enemyLayer, true);
         }
 
         private void EndDash()
         {
             _isDashing = false;
             _velocity  = _dashDir * (moveSpeed * MoveSpeedMult);
-            Physics2D.IgnoreLayerCollision(gameObject.layer,
-                LayerMask.NameToLayer("Enemy"), false);
+            int _enemyLayerEnd = LayerMask.NameToLayer("Enemy");
+            if (_enemyLayerEnd >= 0 && _enemyLayerEnd <= 31 &&
+                gameObject.layer >= 0 && gameObject.layer <= 31)
+                Physics2D.IgnoreLayerCollision(gameObject.layer, _enemyLayerEnd, false);
         }
 
         private void HandleDashCooldown()

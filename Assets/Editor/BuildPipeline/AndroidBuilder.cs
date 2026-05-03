@@ -90,6 +90,11 @@ namespace AGNIDAWN.Build
                     : BuildOptions.Development | BuildOptions.AllowDebugging
             };
 
+            // Force asset re-import so any newly-added Resources (PNGs etc.) are
+            // included in the APK even when added after the last Editor session.
+            Debug.Log("[AndroidBuilder] Refreshing AssetDatabase...");
+            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+
             Debug.Log($"[AndroidBuilder] Starting Android build → {outputPath}");
             Debug.Log($"[AndroidBuilder] Scenes: {string.Join(", ", options.scenes)}");
             Debug.Log($"[AndroidBuilder] Release: {isRelease}");
