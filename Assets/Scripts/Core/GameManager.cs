@@ -35,6 +35,9 @@ namespace AGNIDAWN.Core
         public static readonly string EVT_GAME_OVER     = "OnGameOver";
         public static readonly string EVT_VICTORY       = "OnVictory";
         public static readonly string EVT_LEVEL_UP      = "OnLevelUp";
+        /// <summary>Fired once per game minute. Arg: current minute (1, 2, 3…).
+        /// BossManager listens to this to trigger boss spawns at minutes 5/10/15/20.</summary>
+        public static readonly string EVT_MINUTE_PASSED = "OnMinutePassed";
 
         // ── Runtime stats ─────────────────────────────────────────────────
         public float ElapsedTime  { get; private set; }
@@ -42,6 +45,9 @@ namespace AGNIDAWN.Core
         public int   TotalKills   { get; private set; }
         public int   CurrentLevel { get; private set; } = 1;
         public bool  IsRunning    => CurrentState == GameState.Playing;
+
+        // ── Minute tracking (drives OnMinutePassed) ───────────────────────
+        private int _lastMinuteMark;
 
         // ── Config ────────────────────────────────────────────────────────
         [Header("Session Config")]
@@ -69,6 +75,15 @@ namespace AGNIDAWN.Core
 
             ElapsedTime += Time.deltaTime;
 
+            // Emit OnMinutePassed once per elapsed minute — drives boss spawning
+            int currentMinute = (int)(ElapsedTime / 60f);
+            if (currentMinute > _lastMinuteMark)
+            {
+                _lastMinuteMark = currentMinute;
+                EventBus.Emit<int>(EVT_MINUTE_PASSED, currentMinute);
+                Debug.Log($"[GameManager] Minute {currentMinute} passed.");
+            }
+
             if (ElapsedTime >= survivalDurationSeconds)
                 TriggerVictory();
         }
@@ -82,10 +97,11 @@ namespace AGNIDAWN.Core
         {
             if (CurrentState != GameState.MainMenu && CurrentState != GameState.GameOver) return;
 
-            ElapsedTime  = 0f;
-            CurrentWave  = 1;
-            TotalKills   = 0;
-            CurrentLevel = 1;
+            ElapsedTime     = 0f;
+            CurrentWave     = 1;
+            TotalKills      = 0;
+            CurrentLevel    = 1;
+            _lastMinuteMark = 0;
             SetState(GameState.Loading);
 
             StartCoroutine(LoadGameScene());
@@ -141,10 +157,11 @@ namespace AGNIDAWN.Core
         /// <summary>Restart the current run from scratch (wave 1, stats zeroed).</summary>
         public void RestartRun()
         {
-            ElapsedTime  = 0f;
-            CurrentWave  = 1;
-            TotalKills   = 0;
-            CurrentLevel = 1;
+            ElapsedTime     = 0f;
+            CurrentWave     = 1;
+            TotalKills      = 0;
+            CurrentLevel    = 1;
+            _lastMinuteMark = 0;
             SetState(GameState.Loading);
             StartCoroutine(LoadGameScene());
         }

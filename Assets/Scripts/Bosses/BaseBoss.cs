@@ -85,13 +85,15 @@ namespace AGNIDAWN.Bosses
             _nextBreakIndex = 0;
 
             BuildPhaseBreaks();
-
-            EventBus.On<float, GameObject>("OnPlayerDamagedWithSource", OnHealthChanged);
+            // Note: health monitoring is done via polling in Update() rather than
+            // EventBus subscription, because HealthSystem emits owner-tagged events
+            // (e.g. "OnEnemyDamagedWithSource") and BaseBoss does not set ownerTag.
+            // Polling guarantees we never miss a death tick regardless of ownerTag.
         }
 
         protected virtual void OnDisable()
         {
-            EventBus.Off<float, GameObject>("OnPlayerDamagedWithSource", OnHealthChanged);
+            // No EventBus subscriptions to clean up — health is polled in Update().
         }
 
         protected virtual void Update()
@@ -103,6 +105,10 @@ namespace AGNIDAWN.Bosses
 
             // Poll HP for phase transitions (separate from events so we never miss a tick)
             CheckPhaseTransition();
+
+            // Death detection: trigger DeathSequence when HP reaches zero
+            if (!_isDead && _health != null && _health.CurrentHealth <= 0f)
+                StartCoroutine(DeathSequence());
         }
 
         #endregion

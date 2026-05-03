@@ -29,10 +29,25 @@ namespace AGNIDAWN.Bootstrap
         internal static AgniKundMini AgniKund;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void OnSceneLoaded()
+        private static void Init()
         {
-            if (SceneManager.GetActiveScene().name != "Game") return;
+            // RuntimeInitializeOnLoadMethod fires only once at startup.
+            // Subscribe to sceneLoaded so we catch every future Game scene load.
+            SceneManager.sceneLoaded += OnSceneLoaded;
 
+            // Handle the edge-case where Game is the very first scene.
+            if (SceneManager.GetActiveScene().name == "Game")
+                SetupScene();
+        }
+
+        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (scene.name != "Game") return;
+            SetupScene();
+        }
+
+        private static void SetupScene()
+        {
             EnsureSingletons();
             BuildCamera();
             BuildAgniKund();
@@ -64,6 +79,12 @@ namespace AGNIDAWN.Bootstrap
             {
                 var tm = new GameObject("TimeManager");
                 tm.AddComponent<TimeManager>();
+            }
+            if (QualityManager.Instance == null)
+            {
+                var qm = new GameObject("QualityManager");
+                qm.AddComponent<QualityManager>();
+                Object.DontDestroyOnLoad(qm);
             }
         }
 
@@ -254,6 +275,7 @@ namespace AGNIDAWN.Bootstrap
             dashLblGo.transform.SetParent(dashGo.transform, false);
             var dashLbl = dashLblGo.AddComponent<Text>();
             dashLbl.text      = "DASH";
+            dashLbl.font      = GetFont();
             dashLbl.fontSize  = 28;
             dashLbl.fontStyle = FontStyle.Bold;
             dashLbl.alignment = TextAnchor.MiddleCenter;
@@ -380,6 +402,7 @@ namespace AGNIDAWN.Bootstrap
             pauseLbl.transform.SetParent(pauseBtnGo.transform, false);
             var pl = pauseLbl.AddComponent<Text>();
             pl.text      = "||";
+            pl.font      = GetFont();
             pl.fontSize  = 26;
             pl.alignment = TextAnchor.MiddleCenter;
             pl.raycastTarget = false;
@@ -416,6 +439,10 @@ namespace AGNIDAWN.Bootstrap
             return img;
         }
 
+        // Returns Unity's built-in Arial so text renders in stripped IL2CPP builds.
+        private static Font GetFont() =>
+            Resources.GetBuiltinResource<Font>("Arial.ttf");
+
         private static Text MakeLabel(Transform parent, string name, string text,
             Vector2 anchorMin, Vector2 anchorMax, float fontSize, TextAnchor align)
         {
@@ -423,6 +450,7 @@ namespace AGNIDAWN.Bootstrap
             go.transform.SetParent(parent, false);
             var lbl = go.AddComponent<Text>();
             lbl.text      = text;
+            lbl.font      = GetFont();
             lbl.fontSize  = (int)fontSize;
             lbl.alignment = align;
             lbl.color     = Color.white;
@@ -811,7 +839,7 @@ namespace AGNIDAWN.Bootstrap
         {
             var go = new GameObject("SimpleEnemy");
             go.tag   = "Enemy";
-            go.layer = LayerMask.NameToLayer("Default");
+            go.layer = 8; // Enemy layer (defined in ProjectSettings/TagManager.asset)
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = SpriteFactory.CreateCircle(tint, 32);
@@ -862,11 +890,4 @@ namespace AGNIDAWN.Bootstrap
         {
             if (Enemy == null || _maxHP <= 0f) return;
             float pct = Enemy.HP / _maxHP;
-            transform.localScale = new Vector3(_fullScale.x * pct, _fullScale.y, _fullScale.z);
-
-            var sr = GetComponent<SpriteRenderer>();
-            if (sr != null)
-                sr.color = Color.Lerp(Color.red, new Color(0.15f, 0.9f, 0.15f), pct);
-        }
-    }
-}
+            transform.localScale = new Vector3(_f
