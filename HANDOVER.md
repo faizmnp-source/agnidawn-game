@@ -15,13 +15,14 @@
 | Phase 3 | Enemy Systems (BaseEnemy, EnemyBehaviours x6, SpawnManager) | Live Session | `bc66d60` | ✅ Done |
 | Phase 4 | Agni Kund 5-tier system (AgniKund.cs, AgniKundTests, EnemyDataTests) | Live Session | `bc66d60` | ✅ Done |
 | Phase 5 | Boss System (BaseBoss, BossData, BossManager, Ravana, Mahishasura, Kali, Vritra, BossSystemTests) | Scheduled Task | `a3effd9` | ✅ Done |
-| Fix | AGNIDAWN.Bosses.asmdef + BossSystemTests namespace fix | Live Session | pending | 🔄 In Progress |
+| Fix | AGNIDAWN.Bosses.asmdef + BossSystemTests namespace fix | Live Session | `1307310` | ✅ Done |
 | Phase 6 | Astra Weapons — BaseAstraProjectile + 10 divine weapon scripts + AstraSystemTests | Scheduled Task | `b86cfa5` | ✅ Done |
 | Phase 7 | Biomes — BiomeData SO, BiomeManager (timed rotation), SpawnManager registry+biome hooks, BaseEnemy slow/knockback consumers, SudarshanaChakra fix, BiomeSystemTests | Scheduled Task | `b9c37c5` | ✅ Done |
 | Phase 8 | Meta-Progression & Shrine System — DivineShardManager, ShrineData/Manager (5 shrines), LoreFragment/Manager, DifficultyData/Manager, SaveSystem extended, MetaProgressionTests (20 tests) | Scheduled Task | `c1ddfcf` | ✅ Done |
 | Phase 9 | FMOD Audio Integration — AudioEventData SO, AudioManager (FMOD+Unity fallback), MusicManager (biome/boss adaptive), SFXController (EventBus→audio), AudioBusController, AudioSystemTests (25 tests) | Scheduled Task | `2102384` | ✅ Done |
 | Phase 10 | URP Post-Processing — AgniTierVisualData SO (5-tier bloom/vignette/CA), AgniVisualStateManager (lerp coroutines), CameraShakeController, ScreenFlashController, VisualSystemTests (18 tests) | Scheduled Task | `43d4100` | ✅ Done |
 | Phase 11 | VFX & Shader System — AGNIDAWN.VFX assembly, VFXEventData SO, VFXManager (EventBus→pool), AgniFlameController (5-tier particle/light), PlayerDivineAura (tier 4/5 corona), BossShockwaveController, MandalaFXController (Brahmastra/Pashupatastra), VFXSystemTests (22 tests) | Scheduled Task | `764d117` | ✅ Done |
+| Phase 12 | UI/UX System — AGNIDAWN.UI assembly, BaseUIPanel (CanvasGroup fade), UIManager (screen stack), HUDController (health/Agni Dial/timer/XP/kills/shards), MainMenuUI, LevelUpUI (rarity boon cards), BossIntroOverlayUI (cinematic), BossHealthBarUI (lag-bar+pips), PauseMenuUI, DeathScreenUI (4 Sanskrit poems), VictoryScreenUI (sunrise anim), UISystemTests (14 tests). Fixed: GameManager TotalKills/CurrentLevel/RestartRun/ReturnToMainMenu | Live Session | `1307310` | ✅ Done |
 
 ---
 
@@ -44,6 +45,8 @@ AGNIDAWN.Audio    (refs Core + Player + Enemies + Bosses + Gameplay)
 AGNIDAWN.Visuals  (refs Core only — post-processing, camera shake, screen flash)
     ↓
 AGNIDAWN.VFX      (refs Core only — particles, flames, aura, shockwave, mandala)
+    ↓
+AGNIDAWN.UI       (refs Core + Bosses — all UI panels, UIManager, HUD)
     ↓
 AGNIDAWN.Tests.EditMode (refs all above, Editor-only)
 ```
@@ -118,12 +121,15 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 ## NEXT PHASES (from Linear)
 | Ticket | Phase | What | Status |
 |--------|-------|------|--------|
-| FAI-11 | Phase 6 | Divine Weapon Astras — 10 weapons with unique projectile scripts (Trishul, Gandiv, Sudarshana Chakra, Brahmastra, Pashupatastra, Nagastra, Varunastra, Vayuastra, Agneyastra, Vajra) | ✅ Done |
-| FAI-12 | Phase 7 | Biomes (Forest, Desert, Mountain, Ocean, Underworld) | ✅ Done |
-| FAI-13 | Phase 8 | Meta-Progression & Shrine System (Divine Shards, 5 Shrines, Lore, Difficulty) | ✅ Done |
-| FAI-14 | Phase 9 | FMOD Audio Integration | ✅ Done |
+| FAI-11 | Phase 6  | Divine Weapon Astras — 10 weapons with unique projectile scripts (Trishul, Gandiv, Sudarshana Chakra, Brahmastra, Pashupatastra, Nagastra, Varunastra, Vayuastra, Agneyastra, Vajra) | ✅ Done |
+| FAI-12 | Phase 7  | Biomes (Forest, Desert, Mountain, Ocean, Underworld) | ✅ Done |
+| FAI-13 | Phase 8  | Meta-Progression & Shrine System (Divine Shards, 5 Shrines, Lore, Difficulty) | ✅ Done |
+| FAI-14 | Phase 9  | FMOD Audio Integration | ✅ Done |
 | FAI-15 | Phase 10 | URP Post-Processing (per-tier Agni visual states) | ✅ Done |
 | FAI-16 | Phase 11 | VFX & Shader System | ✅ Done |
+| FAI-14 | Phase 12 | UI/UX System — BaseUIPanel, UIManager, HUD, MainMenu, LevelUp, BossIntro, BossHP, Pause, Death, Victory + 14 tests | ✅ Done |
+| FAI-17 | Phase 13 | QA, Testing & Build Pipeline — Unity PlayMode tests, GitHub Actions, Appium for menu UI, ADB for Z Fold7 | ⏳ Next |
+| FAI-19 | Phase 14 | Mobile Testing — Samsung Z Fold7 device testing, ADB APK push, Appium UI flows | ⏳ Upcoming |
 
 ---
 
@@ -148,6 +154,7 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 - `2026-05-02` — Scheduled Task: Phase 9 — FMOD Audio Integration (AGNIDAWN.Audio assembly, AudioEventData SO, AudioManager FMOD+Unity fallback, MusicManager biome/boss adaptive music, SFXController EventBus→SFX, AudioBusController, 25 EditMode tests)
 - `2026-05-03` — Scheduled Task: Phase 10 — URP Post-Processing (AgniTierVisualData SO, AgniVisualStateManager, CameraShakeController, ScreenFlashController, 18 EditMode tests) — pushed commit `43d4100`
 - `2026-05-03` — Scheduled Task: Phase 11 — VFX & Shader System (AGNIDAWN.VFX assembly, VFXEventData SO, VFXManager, AgniFlameController, PlayerDivineAura, BossShockwaveController, AutoReturnToPool, MandalaFXController, 22 EditMode tests) — commit `764d117`
+- `2026-05-03` — Live Session: Phase 12 — UI/UX System (AGNIDAWN.UI assembly, BaseUIPanel, UIManager, HUDController, MainMenuUI, LevelUpUI, BossIntroOverlayUI, BossHealthBarUI, PauseMenuUI, DeathScreenUI, VictoryScreenUI, UISystemTests 14 tests). Fixed: UI asmdef Bosses ref, GameManager TotalKills/CurrentLevel/RestartRun/ReturnToMainMenu, bestRunTimeSeconds field name. FAI-14 → Done — commit `1307310`
 
 ---
 *When you finish a coding session, add a row to "Last Updated" and update the "WHO BUILT WHAT" table.*
