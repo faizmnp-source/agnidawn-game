@@ -87,6 +87,14 @@ if (-not $keystorePath) {
     Write-Warning "AGNIDAWN_KEYSTORE_PATH not set — building with debug keystore."
 }
 
+# ── Ensure PROGRAMDATA is set ────────────────────────────────────────────────
+# Unity spawns UnityPackageManager.exe (Node.js) which calls:
+#   path.join(process.env.PROGRAMDATA, "Unity", "config")
+# If PROGRAMDATA is absent (e.g. non-interactive/MCP sessions), UPM crashes
+# with exit code 101 before creating its IPC pipe, causing Unity to abort with
+# "Could not connect to IPC stream Upm-{PID} after 30s".
+if (-not $env:PROGRAMDATA) { $env:PROGRAMDATA = "C:\ProgramData" }
+
 # ── Build args ────────────────────────────────────────────────────────────────
 $buildArgs = @(
     "-batchmode",
