@@ -112,9 +112,8 @@ namespace AGNIDAWN.Bootstrap
             cam.clearFlags        = CameraClearFlags.SolidColor;
             cam.backgroundColor   = new Color(0.04f, 0.02f, 0.02f, 1f);
             cam.orthographic      = true;
-            cam.orthographicSize  = 6f;   // tighter view — characters more visible
-            // Start at player spawn so there is no initial black-band pan
-            cam.transform.position = new Vector3(0f, 3f, -10f);
+            cam.orthographicSize  = 6f;
+            cam.transform.position = new Vector3(0f, 0f, -10f);
 
             var follow = cam.gameObject.AddComponent<CameraFollow>();
             // Store ref so BuildPlayer can wire the target directly
@@ -136,20 +135,22 @@ namespace AGNIDAWN.Bootstrap
             }
 
             var go = new GameObject("ArenaBackground");
-            go.transform.position = Vector3.zero;
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = arenaSprite;
             sr.sortingOrder = -100;
 
-            // Scale to fill a portrait screen:
-            // orthographicSize=6 → 12 world units tall; assume ~0.48 aspect on fold phone
-            float camH = 6f * 2f;              // 12 units
-            float camW = camH * 0.50f;         // 6 units (conservative portrait width)
+            // Use actual camera to compute fill scale — must run after BuildCamera()
+            var cam = Camera.main ?? Object.FindAnyObjectByType<Camera>();
+            float camH = (cam != null ? cam.orthographicSize : 6f) * 2f;
+            float camW = camH * (cam != null ? cam.aspect : 0.43f);
             float sw   = arenaSprite.bounds.size.x;
             float sh   = arenaSprite.bounds.size.y;
-            // Scale up whichever axis is needed to fill, keep aspect ratio
+            // Scale up whichever dimension would leave a gap, preserve aspect ratio
             float scale = Mathf.Max(camW / sw, camH / sh);
             go.transform.localScale = new Vector3(scale, scale, 1f);
+            // Anchor to camera center so the background fills the whole viewport
+            float camY = cam != null ? cam.transform.position.y : 0f;
+            go.transform.position = new Vector3(0f, camY, 0f);
         }
 
         #endregion
@@ -170,13 +171,14 @@ namespace AGNIDAWN.Bootstrap
             var kundSprite = Resources.Load<Sprite>("AgniKund");
             if (kundSprite != null)
             {
+                Debug.Log("[GameBootstrap] AgniKund sprite loaded OK");
                 sr.sprite = kundSprite;
                 sr.color  = Color.white;
-                // Sprite PPU set to ~3 world units tall in meta; scale to 2u
                 go.transform.localScale = Vector3.one;
             }
             else
             {
+                Debug.LogWarning("[GameBootstrap] AgniKund.png not found in Resources — using procedural circle fallback");
                 // Fallback: procedural golden circle
                 sr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.72f, 0.08f), 96);
                 go.transform.localScale = Vector3.one * 1.5f;
@@ -901,8 +903,8 @@ namespace AGNIDAWN.Bootstrap
         {
             var go = new GameObject("SimpleEnemy");
             go.tag   = "Enemy";
-            go.layer = LayerMask.NameToLayer("Enemy");
-            if (go.layer < 0) go.layer = 0; // fallback to Default if layer not found
+            var _eLayer = LayerMask.NameToLayer("Enemy");
+            go.layer = (_eLayer >= 0 && _eLayer <= 31) ? _eLayer : 0;
 
             // Place offscreen at start so inactive pool members are invisible
             go.transform.position = new Vector3(-9999f, -9999f, 0f);
