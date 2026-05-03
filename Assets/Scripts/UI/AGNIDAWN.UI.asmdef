@@ -1,0 +1,17 @@
+{
+    "name": "AGNIDAWN.UI",
+    "rootNamespace": "AGNIDAWN.UI",
+    "references": [
+        "AGNIDAWN.Core",
+        "AGNIDAWN.Bosses"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

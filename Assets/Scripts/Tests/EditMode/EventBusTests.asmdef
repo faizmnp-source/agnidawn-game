@@ -9,7 +9,8 @@
         "AGNIDAWN.Bosses",
         "AGNIDAWN.Audio",
         "AGNIDAWN.Visuals",
-        "AGNIDAWN.VFX"
+        "AGNIDAWN.VFX",
+        "AGNIDAWN.UI"
     ],
     "includePlatforms": [
         "Editor"

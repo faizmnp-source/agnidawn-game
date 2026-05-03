@@ -39,6 +39,8 @@ namespace AGNIDAWN.Core
         // ── Runtime stats ─────────────────────────────────────────────────
         public float ElapsedTime  { get; private set; }
         public int   CurrentWave  { get; private set; }
+        public int   TotalKills   { get; private set; }
+        public int   CurrentLevel { get; private set; } = 1;
         public bool  IsRunning    => CurrentState == GameState.Playing;
 
         // ── Config ────────────────────────────────────────────────────────
@@ -82,6 +84,8 @@ namespace AGNIDAWN.Core
 
             ElapsedTime  = 0f;
             CurrentWave  = 1;
+            TotalKills   = 0;
+            CurrentLevel = 1;
             SetState(GameState.Loading);
 
             StartCoroutine(LoadGameScene());
@@ -132,6 +136,33 @@ namespace AGNIDAWN.Core
             if (CurrentState != GameState.LevelUp) return;
             SetState(GameState.Playing);
             TimeManager.Instance?.SetTimeScale(1f);
+        }
+
+        /// <summary>Restart the current run from scratch (wave 1, stats zeroed).</summary>
+        public void RestartRun()
+        {
+            ElapsedTime  = 0f;
+            CurrentWave  = 1;
+            TotalKills   = 0;
+            CurrentLevel = 1;
+            SetState(GameState.Loading);
+            StartCoroutine(LoadGameScene());
+        }
+
+        /// <summary>Return to the main menu scene (alias used by UI layer).</summary>
+        public void ReturnToMainMenu() => ReturnToMenu();
+
+        /// <summary>Called by EnemyBase / KillSystem to register a confirmed kill.</summary>
+        public void RegisterKill()
+        {
+            TotalKills++;
+            EventBus.Emit("OnKillRegistered", TotalKills);
+        }
+
+        /// <summary>Called by LevelSystem when the player gains a level.</summary>
+        public void SetLevel(int level)
+        {
+            CurrentLevel = level;
         }
 
         public void IncrementWave()
