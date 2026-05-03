@@ -160,10 +160,14 @@ namespace AGNIDAWN.Bootstrap
             go.layer = LayerMask.NameToLayer("Default");
             go.transform.position = new Vector3(0, 3f, 0);
 
-            // Sprite — divine orange/white
+            // Sprite — painted Agni character art
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.45f, 0.05f), 48);
             sr.sortingOrder = 10;
+            var agniAnim = CharacterSpriteFactory.Setup(go, "Agni", sortingOrder: 10);
+            if (agniAnim == null) // fallback: circle if sprites failed to load
+            {
+                sr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.45f, 0.05f), 48);
+            }
 
             // Physics
             var rb = go.AddComponent<Rigidbody2D>();
@@ -740,7 +744,7 @@ namespace AGNIDAWN.Bootstrap
         private int         _poolSize      = 30;
         private List<GameObject> _pool;
 
-        // Enemy variant colours (Asura, Rakshasa, Naga, Pisacha, Vetala)
+        // Enemy variant colours — kept for HP bar tinting
         private static readonly Color[] Tints =
         {
             new Color(0.9f, 0.1f, 0.1f),   // Asura — red
@@ -750,13 +754,19 @@ namespace AGNIDAWN.Bootstrap
             new Color(0.2f, 0.6f, 0.9f),   // Vetala — blue
         };
 
+        // Character art names matching Tints order
+        private static readonly string[] EnemyChars =
+        {
+            "Asura", "Rakshasa", "Naga", "Pisacha", "Vetala",
+        };
+
         private void Start()
         {
             // Build pool
             _pool = new List<GameObject>(_poolSize);
             for (int i = 0; i < _poolSize; i++)
             {
-                var go  = CreateEnemyGO(Tints[i % Tints.Length]);
+                var go  = CreateEnemyGO(Tints[i % Tints.Length], EnemyChars[i % EnemyChars.Length]);
                 go.SetActive(false);
                 _pool.Add(go);
             }
@@ -835,16 +845,21 @@ namespace AGNIDAWN.Bootstrap
             foreach (var e in _pool) e.SetActive(false);
         }
 
-        private static GameObject CreateEnemyGO(Color tint)
+        private static GameObject CreateEnemyGO(Color tint, string charName = "Asura")
         {
             var go = new GameObject("SimpleEnemy");
             go.tag   = "Enemy";
             go.layer = 8; // Enemy layer (defined in ProjectSettings/TagManager.asset)
 
+            // Painted character sprite — fallback to tinted circle if load fails
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = SpriteFactory.CreateCircle(tint, 32);
-            sr.color  = tint;
             sr.sortingOrder = 5;
+            var enemyAnim = CharacterSpriteFactory.Setup(go, charName, sortingOrder: 5);
+            if (enemyAnim == null)
+            {
+                sr.sprite = SpriteFactory.CreateCircle(tint, 32);
+                sr.color  = tint;
+            }
 
             var rb = go.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;

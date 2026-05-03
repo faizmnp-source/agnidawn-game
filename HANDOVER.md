@@ -116,8 +116,262 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 - [x] `GameManager.cs` emits `OnMinutePassed` — wired in Phase 16 ✅
 - [x] `QualityManager.cs` added — GPU tier auto-detect (Low/Medium/High) in Phase 16 ✅
 - [ ] Phase 6 astra prefabs not created yet — each Astra script requires a Unity prefab with its component assigned in AstraData.projectilePrefab
+- [ ] **APK build blocked by Windows Defender BM** — Unity batch-mode can't spawn `UnityPackageManager.exe` as child process (Behavior Monitoring blocks it). Fix requires admin: `Add-MpPreference -ExclusionPath "C:\Program Files\Unity"` in elevated PowerShell, OR open Unity interactively and build from Build Settings → Android → Build. The code itself (0 CS errors) is ready.
 - [x] `OnSlowApplied` / `OnKnockbackApplied` — consumers added to BaseEnemy (Phase 7) ✅
 - [x] SudarshanaChakra `FindNearestEnemy()` — replaced with SpawnManager.ActiveEnemies registry (Phase 7) ✅
+
+---
+
+## PHASE 17 — ART DIRECTION (CONFIRMED — DO NOT DEVIATE)
+
+**Style:** Painted/rendered sprite style — NOT pixel art, NOT procedural shapes.
+**Reference:** Asura demon sprite sheet provided by Faizan (Midjourney-generated).
+**Spec per character:**
+- High-detail painted look with lava/fire cracks and glowing emissive effects
+- Semi-isometric perspective (slight top-down angle)
+- Transparent background per frame (PNG with alpha)
+- Each frame ~100×120px
+- Minimum animation states: **Idle** + **Walk** (more per character if relevant)
+
+**Characters needing sprites:** Agni ✅ Asura ✅ Rakshasa ✅ Naga ✅ Pisacha ✅ Vetala ✅ — all 6 confirmed. Still needed: Agni Kund (5 tiers), Arena background tile, 10 Astra projectiles.
+
+**Workflow:**
+1. Faizan generates each sprite sheet via Midjourney and shares the image here or in #cowork-commands
+2. Live session slices frames, imports as Texture2D, wires into CharacterSpriteFactory + GameBootstrap
+3. DO NOT implement placeholder pixel art — wait for Midjourney assets
+
+**⚠️ NO SESSION should begin Phase 17 sprite implementation until Faizan provides the source images.**
+
+---
+
+### ASURA — Enemy Type 1 (✅ Reference confirmed)
+
+**File:** `Assets/Sprites/Characters/Asura_reference.png`
+
+**Visual design:**
+- Bulky red/orange lava-cracked body with glowing fire veins and embers
+- Large curved bull horns on head
+- Carries a war axe
+- **Palette:** deep red, orange-red lava cracks, bright orange glow, dark brown shadow
+- Painted 2D, semi-isometric, transparent background per frame
+
+**Sheet layout — 4 rows:**
+
+| Row | Contents | Frames |
+|-----|----------|--------|
+| Row 1 | Idle + Walk | 4 idle + 6 walk |
+| Row 2 | Idle variant + Walk variant | 4 + 4 |
+| Row 3 | Idle + Walk | 4 + 4 |
+| Row 4 | Idle + Boss variant walk | 4 + 4 |
+
+**Animation states → game mapping:**
+
+| Sheet Frames | Game Anim | Trigger |
+|-------------|-----------|---------|
+| Row 1 Idle (4fr) | `idle` | Default / in range, not moving |
+| Row 1 Walk (6fr) | `chase` | Moving toward Agni Kund or player |
+| Row 4 Boss frames | `boss_variant` | Used for Asura boss (Ravana's minions / Phase 3 elite variant) |
+
+**Implementation notes:**
+- Row 1 is the primary animation set — use for standard Asura enemy
+- Row 4 boss variant reserved for elite/boss-tier Asura spawns (higher HP, larger scale ~1.5×)
+- `BaseEnemy.cs` drives `idle` ↔ `chase` via `Animator.SetBool("isMoving", ...)`
+- Boss variant triggered by a `isElite` flag on the enemy data
+
+---
+
+### RAKSHASA — Enemy Type 2 / Warrior (✅ Reference confirmed)
+
+**File:** `Assets/Sprites/Characters/Rakshasa_reference.png`
+
+**Visual design:**
+- Powerfully built dark blue-grey demonic warrior
+- Wild mane/fur around head and shoulders, beast-like face with fangs
+- Gold ornate armor on arms and chest, gold medallion center piece
+- Carries a large curved golden war blade/scimitar
+- **Palette:** dark blue-grey body, gold armor, orange fire accents, bright gold weapon
+- Painted 2D, semi-isometric, transparent background per frame
+
+**Sheet layout:**
+
+| Position | Contents | Frames |
+|----------|----------|--------|
+| Top left | Standing (idle) | 4 |
+| Top right | Guarded Creed (move) | 6 |
+| Top right (inner) | Aggr Rush | 4 |
+| Bottom left | Aggr Rush variant | 4 |
+| Bottom right | Rakshasa Magic Effects (particles) | multiple sets |
+
+**Rakshasa Magic Effects breakdown:**
+- Blue orbs → projectile VFX (`VFX_RakshasaOrb`)
+- Flame slashes → melee hit VFX (`VFX_RakshasaSlash`)
+- Claw effects → heavy attack impact (`VFX_RakshasaClaw`)
+
+**Animation states → game mapping:**
+
+| Sheet Frames | Game Anim | Trigger |
+|-------------|-----------|---------|
+| Standing (4fr) | `idle` | Default / in range |
+| Guarded Creed (6fr) | `move` | Pathing toward Agni Kund |
+| Aggr Rush (4fr) | `attack` | Melee swing |
+| Aggr Rush variant (4fr) | `attack_alt` | Alternate attack (blend randomly) |
+| Magic Effects | `vfx` | Spawned at hit/death contact points |
+
+**Implementation notes:**
+- Rakshasa is the fast flanker archetype — high move speed, medium HP, hits hard
+- Two attack variants (`attack` + `attack_alt`) blended randomly per swing to avoid repetition
+- Blue orb particles → Rakshasa has a ranged throw at distance > 4f; uses `VFX_RakshasaOrb` from ObjectPool
+- Gold scimitar weapon sprite extends beyond body bounds — set attack hitbox as a separate child `BoxCollider2D` offset forward
+- Can be slowed (`OnSlowApplied` applies) and knocked back (`OnKnockbackApplied` applies) — no immunities
+
+---
+
+### VETALA — Enemy Type 5 / Undead Berserker (✅ Reference confirmed)
+
+**File:** `Assets/Sprites/Characters/Vetala_reference.png`
+
+**Visual design:**
+- Grey decaying undead corpse, hunched aggressive posture
+- Exposed skull face, sunken eyes, hollow cheeks, bare decaying torso
+- Long dragging arms with clawed hands — speeds up when damaged (already in BaseEnemy code)
+- Tattered brown cloth around waist
+- **Palette:** grey-green decay, pale bone, dark shadow, tattered brown cloth
+- Painted 2D, semi-isometric, transparent background per frame
+
+**Sheet layout:**
+
+| Position | Contents | Frames |
+|----------|----------|--------|
+| Top left | Hunched Stance (idle) | 4 |
+| Top right | Decaying Posture (move) | 4 |
+| Left middle | Aggressive Rush (enraged) | 4 |
+| Bottom left | Aggressive Rush variant | 4 |
+| Bottom right | Vetala Magick Effect (particles) | — |
+
+**Animation states → game mapping:**
+
+| Sheet Frames | Game Anim | Trigger |
+|-------------|-----------|---------|
+| Hunched Stance (4fr) | `idle` | Default / HP > 50% and stationary |
+| Decaying Posture (4fr) | `move` | Moving toward target, HP > 50% |
+| Aggressive Rush (4fr) | `enraged` | HP drops below 50% — stays until death |
+| Aggressive Rush variant (4fr) | `enraged_alt` | Alternate enraged cycle (blend randomly) |
+| Vetala Magick Effect | `death` | OnDeath dissolve |
+
+**Implementation notes:**
+- `enraged` transition is permanent — once triggered at ≤50% HP it never reverts
+- On `enraged` trigger: `moveSpeed *= 1.6f` + `SpriteRenderer` tint shifts to darker grey-green (Color mul ~0.8 green channel)
+- Blend `enraged` and `enraged_alt` randomly (pick one per spawn) to avoid visual repetition in large hordes
+- Vetala Magick Effect frames → `VFX_VetalaDeath` pool entry, dark swirling dissolve
+- Long dragging arms mean attack hitbox is wider than the sprite bounds — set `CircleCollider2D` radius ~10% wider than visual
+- Immune to slow effects (`OnSlowApplied` — skip Vetala; undead don't feel pain)
+
+---
+
+### PISACHA — Enemy Type 4 / Ghost (✅ Reference confirmed)
+
+**File:** `Assets/Sprites/Characters/Pisacha_reference.png`
+
+**Visual design:**
+- Wispy ethereal ghost — pale white-green glowing body, no solid lower body, trails off into tendrils
+- Haunting face with hollow scream expression
+- Floats and drifts — no walk cycle, flowing glide motion
+- **Palette:** pale white, mint green, bright green glow, dark void hollow eyes
+- Painted 2D, semi-isometric, transparent background per frame
+
+**Sheet layout:**
+
+| Position | Contents | Frames |
+|----------|----------|--------|
+| Top left | Standing | 4 |
+| Top right | Guarded Creed (drift move) | 6 |
+| Bottom left | Agha Rush (attack) | 4 |
+| Bottom right | Pisacha Manifestation Effect (particles) | — |
+
+**Animation states → game mapping:**
+
+| Sheet Frames | Game Anim | Trigger |
+|-------------|-----------|---------|
+| Standing (4fr) | `idle` | Default / hovering in place |
+| Guarded Creed (6fr) | `move` | Drifting toward Agni Kund |
+| Agha Rush (4fr) | `attack` | Lunge/rush at target |
+| Manifestation Effect | `spawn` + `death` | OnEnable (spawn) + OnDeath (dissolve) |
+
+**Implementation notes:**
+- Pisacha has no `Rigidbody2D` gravity — `gravityScale = 0`, moves via `transform.position` lerp for smooth float
+- Apply a subtle sine-wave vertical offset in `Update()` (amplitude ~0.05f, speed ~2f) to sell the hover
+- Manifestation Effect frames used for BOTH spawn (fade-in) and death (dissolve) — play forward on spawn, reverse on death
+- `SpriteRenderer.color.a` lerp to 0.7f during `move` state — ghosts are semi-transparent when drifting
+- Does NOT trigger `OnKnockbackApplied` — Pisacha ignores knockback (ethereal, passes through wind)
+
+---
+
+### NAGA — Enemy Type 3 / Tank (✅ Reference confirmed)
+
+**File:** `Assets/Sprites/Characters/Naga_reference.png`
+
+**Visual design:**
+- Humanoid upper body with green armored scales, cobra-like head with flared hood
+- Large coiled green serpent lower body — no legs, glides across ground
+- Carries shield + spear/sword — visually confirmed tank role
+- Small serpent companion particles (bottom center of sheet) — use as death/hit VFX
+- **Palette:** deep green, gold armor trim, lighter green scales, glowing eyes
+- Painted 2D, semi-isometric, transparent background per frame
+
+**Sheet layout:**
+
+| Position | Contents | Frames |
+|----------|----------|--------|
+| Top left | Standing | 4 |
+| Top right | Guarded Creed (move) | 6 |
+| Right side | Serpent Guard Atk | 4 |
+| Bottom left | Standing variant | 4 |
+| Bottom right | Guarded Creed variant | 4 |
+| Bottom center | Serpent companion particles | — |
+
+**Animation states → game mapping:**
+
+| Sheet Frames | Game Anim | Trigger |
+|-------------|-----------|---------|
+| Standing (top left, 4fr) | `idle` | Default / stationary |
+| Guarded Creed (top right, 6fr) | `move` | Moving toward Agni Kund |
+| Serpent Guard Atk (4fr) | `attack` | Attack swing |
+
+**Implementation notes:**
+- Naga is the tank archetype — higher HP, slower move speed than Asura
+- Shield visual confirms a `damageReduction` stat in `EnemyData` (suggest 0.3f — 30% less damage from front)
+- Serpent companion sprites → use as `VFX_NagaDeath` pool entry on `BaseEnemy` death
+- Scale: ~1.3× standard enemy size to reinforce bulk
+- Bottom variant rows available for an elite/armored Naga tier if needed
+
+---
+
+### AGNI — Player Character (✅ Reference confirmed)
+
+**File:** `Assets/Sprites/Characters/Agni_reference.png`
+
+**Visual design:**
+- Fire/lava-cracked orange-red body with glowing flame accents
+- Semi-serpentine lower body (dragon/naga hybrid elemental form)
+- Fire mage aesthetic — elemental, not a traditional warrior
+- Small fire particle effects around the body
+- **Palette:** deep orange, red-brown, gold, bright orange flame highlights
+- Painted 2D, semi-isometric, transparent background per frame
+
+**Animation states in sheet → game mapping:**
+
+| Sheet State | Game Anim | Trigger |
+|-------------|-----------|---------|
+| Standing | `idle` | Default / no input |
+| Stealth Creep | `move` | Player moving |
+| Fire Dagger Atk | `attack` | Astra fired |
+| Agniform Mage | `special` | Ultimate / high Agni tier (tier 4–5) |
+
+**Implementation notes:**
+- Slice sheet into individual animation states using Unity Sprite Editor
+- Create `AnimatorController` with the 4 states above
+- `PlayerController.cs` drives transitions via `Animator.SetTrigger` / `SetBool`
+- `special` state plays automatically when `AgniKund` tier ≥ 4 (listen to `OnAgniTierChanged` event)
 
 ---
 
@@ -135,6 +389,7 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 | FAI-19 | Phase 14 | Mobile Testing — APK built (84.7 MB IL2CPP/ARM64 debug), installed on Samsung Z Fold7 (RZGYA0KX12E) via Unity ADB, launched, logcat verified: Vulkan+Adreno init, AAudio active, 1080×2520 SurfaceView, SetGameState mode:CONTENT — zero Unity errors | ✅ Done |
 | —      | Phase 15 | Bootstrap & Playable Prototype — AGNIDAWN.Bootstrap assembly, GameBootstrap (no-prefab scene wiring: CameraFollow, AgniKundMini, VirtualJoystick, SimpleEnemySpawner, HUDUpdater), MainMenuBootstrap, SpriteFactory primitives. Playable on device with zero ScriptableObjects. | ✅ Done |
 | FAI-20 | Phase 16 | Game Integration & Critical Fixes — GameManager emits OnMinutePassed (bosses now spawn), BaseBoss health listener fixed (polling vs wrong EventBus event), QualityManager (GPU tier auto-detect, 3 tiers, Z Fold7→High), GameBootstrap wires QualityManager, IntegrationTests (10 tests) | ✅ Done |
+| FAI-17 | Phase 17 | Character Sprite System — CharacterAnimator.cs (code-driven frame animator, auto idle/walk via linearVelocity), CharacterSpriteFactory.cs (zero-prefab sprite loader from Resources/Characters/). All 6 characters extracted from Midjourney sheets: Agni (2+2fr), Asura (8+8fr), Naga (3+3fr), Pisacha (2+2fr), Vetala (3+3fr), Rakshasa (3+3fr). GameBootstrap updated: player uses Agni sprite, 5 enemy types cycle Asura/Rakshasa/Naga/Pisacha/Vetala. Compile: 0 errors. APK not built — see Known Issues. | 🔶 Code Done / APK Blocked |
 
 ---
 
@@ -146,6 +401,34 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 5. **ScriptableObjects** use `[CreateAssetMenu(menuName = "AGNIDAWN/...")]`
 6. **All inter-system communication** goes through EventBus — no direct cross-assembly references upward
 7. **BossData.spawnAtMinute** must be 5, 10, 15, or 20 — GameManager emits `OnMinutePassed` on exact minute marks
+
+### SESSION LOCK — must be followed by EVERY session (live and scheduled)
+
+**Purpose:** Prevents two sessions from writing files at the same time.
+
+**Lock file:** `C:\Users\Micro\30 Minute\30 Minutes\agnidawn-game\.cowork-session.lock`
+
+**Live session — ACQUIRE at start of any file/git work:**
+```powershell
+$ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+$lock = "{`"owner`":`"live-session`",`"since`":`"$ts`",`"doing`":`"DESCRIPTION`"}"
+Set-Content "C:\Users\Micro\30 Minute\30 Minutes\agnidawn-game\.cowork-session.lock" -Value $lock
+```
+
+**Live session — RELEASE when done or before ending the session:**
+```powershell
+Remove-Item "C:\Users\Micro\30 Minute\30 Minutes\agnidawn-game\.cowork-session.lock" -Force -ErrorAction SilentlyContinue
+```
+
+**Scheduled task behaviour when lock exists:**
+- Lock owned by `live-session` AND since < 30 min → back off, retry next run
+- Lock owned by `live-session` AND since > 30 min → stale, delete and proceed
+- Lock owned by another scheduled task AND since < 10 min → back off
+- Lock owned by another scheduled task AND since > 10 min → stale, delete and proceed
+
+**Scheduled task — check BOTH guards before any file/git write:**
+1. `mcp__session_info__list_sessions` — if a non-monitor Cowork session is running → back off
+2. Lock file check above → if live-session lock is fresh → back off
 
 ---
 
@@ -163,6 +446,7 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 - `2026-05-03` — Live Session: Phase 12 — UI/UX System (AGNIDAWN.UI assembly, BaseUIPanel, UIManager, HUDController, MainMenuUI, LevelUpUI, BossIntroOverlayUI, BossHealthBarUI, PauseMenuUI, DeathScreenUI, VictoryScreenUI, UISystemTests 14 tests). Fixed: UI asmdef Bosses ref, GameManager TotalKills/CurrentLevel/RestartRun/ReturnToMainMenu, bestRunTimeSeconds field name. FAI-14 → Done — commit `1307310`
 - `2026-05-03` — Live Session: Phase 15 — Bootstrap & Playable Prototype (AGNIDAWN.Bootstrap assembly, GameBootstrap, MainMenuBootstrap, SpriteFactory, AgniKundMini, VirtualJoystick, SimpleEnemySpawner, CameraFollow, HUDUpdater) — commits `cc118fa` + `dd2b755`
 - `2026-05-03` — Scheduled Task: Phase 16 — Game Integration & Critical Fixes (GameManager OnMinutePassed wired, BaseBoss death detection fixed, QualityManager new singleton, IntegrationTests 10 tests) — commits `555afe7` + `4cb4747`
+- `2026-05-03` — Live Session: Phase 17 — Character Sprite System (CharacterAnimator.cs, CharacterSpriteFactory.cs, GameBootstrap updated for all 6 characters, 42 sprite frames extracted from Midjourney sheets into Resources/Characters/). Compile: 0 CS errors. APK blocked: Windows Defender BM prevents Unity batch-mode from spawning UnityPackageManager.exe. Needs admin fix or interactive Unity build before device deploy.
 
 ---
 *When you finish a coding session, add a row to "Last Updated" and update the "WHO BUILT WHAT" table.*

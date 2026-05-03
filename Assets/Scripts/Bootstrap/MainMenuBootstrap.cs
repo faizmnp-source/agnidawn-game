@@ -16,10 +16,24 @@ namespace AGNIDAWN.Bootstrap
     public static class MainMenuBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void OnSceneLoaded()
+        private static void Init()
         {
-            if (SceneManager.GetActiveScene().name != "MainMenu") return;
+            // Subscribe to all future scene loads (RuntimeInitializeOnLoadMethod fires once).
+            SceneManager.sceneLoaded += OnSceneLoaded;
 
+            // Handle startup case where MainMenu is the first scene.
+            if (SceneManager.GetActiveScene().name == "MainMenu")
+                SetupScene();
+        }
+
+        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (scene.name != "MainMenu") return;
+            SetupScene();
+        }
+
+        private static void SetupScene()
+        {
             EnsureSingletons();
             BuildTitleScreen();
 
@@ -96,6 +110,7 @@ namespace AGNIDAWN.Bootstrap
             titleGo.transform.SetParent(canvasGo.transform, false);
             var titleTxt = titleGo.AddComponent<Text>();
             titleTxt.text      = "AGNIDAWN";
+            titleTxt.font      = GetFont();
             titleTxt.fontSize  = 96;
             titleTxt.fontStyle = FontStyle.Bold;
             titleTxt.alignment = TextAnchor.MiddleCenter;
@@ -112,6 +127,7 @@ namespace AGNIDAWN.Bootstrap
             subGo.transform.SetParent(canvasGo.transform, false);
             var subTxt = subGo.AddComponent<Text>();
             subTxt.text      = "Survive the Demon Tide";
+            subTxt.font      = GetFont();
             subTxt.fontSize  = 36;
             subTxt.alignment = TextAnchor.MiddleCenter;
             subTxt.color     = new Color(0.9f, 0.6f, 0.2f, 0.8f);
@@ -147,6 +163,7 @@ namespace AGNIDAWN.Bootstrap
             verGo.transform.SetParent(canvasGo.transform, false);
             var verTxt = verGo.AddComponent<Text>();
             verTxt.text      = "v0.15.0";
+            verTxt.font      = GetFont();
             verTxt.fontSize  = 22;
             verTxt.alignment = TextAnchor.LowerRight;
             verTxt.color     = new Color(1f, 1f, 1f, 0.3f);
@@ -165,6 +182,10 @@ namespace AGNIDAWN.Bootstrap
 
         // ──────────────────────────────────────────────────────────────────────
         #region Helpers
+
+        // Returns Unity's built-in Arial so text renders in stripped IL2CPP builds.
+        private static Font GetFont() =>
+            Resources.GetBuiltinResource<Font>("Arial.ttf");
 
         private static void EnsureEventSystem()
         {
@@ -214,6 +235,7 @@ namespace AGNIDAWN.Bootstrap
             txtGo.transform.SetParent(go.transform, false);
             var txt = txtGo.AddComponent<Text>();
             txt.text      = label;
+            txt.font      = GetFont();
             txt.fontSize  = 42;
             txt.fontStyle = FontStyle.Bold;
             txt.alignment = TextAnchor.MiddleCenter;
