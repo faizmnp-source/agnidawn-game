@@ -24,6 +24,7 @@
 | Phase 11 | VFX & Shader System — AGNIDAWN.VFX assembly, VFXEventData SO, VFXManager (EventBus→pool), AgniFlameController (5-tier particle/light), PlayerDivineAura (tier 4/5 corona), BossShockwaveController, MandalaFXController (Brahmastra/Pashupatastra), VFXSystemTests (22 tests) | Scheduled Task | `764d117` | ✅ Done |
 | Phase 12 | UI/UX System — AGNIDAWN.UI assembly, BaseUIPanel (CanvasGroup fade), UIManager (screen stack), HUDController (health/Agni Dial/timer/XP/kills/shards), MainMenuUI, LevelUpUI (rarity boon cards), BossIntroOverlayUI (cinematic), BossHealthBarUI (lag-bar+pips), PauseMenuUI, DeathScreenUI (4 Sanskrit poems), VictoryScreenUI (sunrise anim), UISystemTests (14 tests). Fixed: GameManager TotalKills/CurrentLevel/RestartRun/ReturnToMainMenu | Live Session | `1307310` | ✅ Done |
 | Phase 13 | QA & Build Pipeline — CI/CD rewrite (editmode+playmode+Android APK+auto-tag), PerformanceTests, BuildValidationTests, QASystemTests (20 tests), run_tests.ps1, build_android.ps1, AndroidBuilder.cs, PR template | Live Session | `45505e0`+`3f6af32` | ✅ Done |
+| Phase 14 | Mobile Testing — IL2CPP/ARM64 APK (84.7 MB) built with Unity 6.4 batch-mode, installed on Samsung Z Fold7 (RZGYA0KX12E) via ADB, launched UnityPlayerGameActivity, logcat confirmed: Vulkan/Adreno init, AAudio stream, 1080×2520 SurfaceView, SetGameState mode:CONTENT, zero Unity errors | Live Session | — | ✅ Done |
 
 ---
 
@@ -131,7 +132,7 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 | FAI-16 | Phase 11 | VFX & Shader System | ✅ Done |
 | FAI-14 | Phase 12 | UI/UX System — BaseUIPanel, UIManager, HUD, MainMenu, LevelUp, BossIntro, BossHP, Pause, Death, Victory + 14 tests | ✅ Done |
 | FAI-17 | Phase 13 | QA, Testing & Build Pipeline — CI/CD rewrite (editmode+playmode+Android+auto-tag), PerformanceTests, BuildValidationTests, QASystemTests (20 tests), run_tests.ps1, build_android.ps1, AndroidBuilder.cs | ✅ Done |
-| FAI-19 | Phase 14 | Mobile Testing — Samsung Z Fold7 device testing, ADB APK push, Appium UI flows | ⏳ Upcoming |
+| FAI-19 | Phase 14 | Mobile Testing — APK built (84.7 MB IL2CPP/ARM64 debug), installed on Samsung Z Fold7 (RZGYA0KX12E) via Unity ADB, launched, logcat verified: Vulkan+Adreno init, AAudio active, 1080×2520 SurfaceView, SetGameState mode:CONTENT — zero Unity errors | ✅ Done |
 
 ---
 
