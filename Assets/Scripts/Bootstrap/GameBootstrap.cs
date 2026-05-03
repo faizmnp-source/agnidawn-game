@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using TMPro;
 using AGNIDAWN.Core;
 using AGNIDAWN.Player;
 
@@ -253,11 +252,11 @@ namespace AGNIDAWN.Bootstrap
             // Dash label
             var dashLblGo = new GameObject("Label");
             dashLblGo.transform.SetParent(dashGo.transform, false);
-            var dashLbl = dashLblGo.AddComponent<TextMeshProUGUI>();
+            var dashLbl = dashLblGo.AddComponent<Text>();
             dashLbl.text      = "DASH";
             dashLbl.fontSize  = 28;
-            dashLbl.fontStyle = FontStyles.Bold;
-            dashLbl.alignment = TextAlignmentOptions.Center;
+            dashLbl.fontStyle = FontStyle.Bold;
+            dashLbl.alignment = TextAnchor.MiddleCenter;
             dashLbl.color     = Color.white;
             dashLbl.raycastTarget = false;
             var dRect = dashLbl.rectTransform;
@@ -302,15 +301,15 @@ namespace AGNIDAWN.Bootstrap
 
             // ── Player health bar ──────────────────────────────────────────
             MakeLabel(canvasGo.transform, "HPLabel", "HP",
-                new Vector2(0.02f, 0.92f), new Vector2(0.12f, 0.98f), 28, TextAlignmentOptions.MidlineLeft);
+                new Vector2(0.02f, 0.92f), new Vector2(0.12f, 0.98f), 28, TextAnchor.MiddleLeft);
             var hpBg = MakeBarBG(canvasGo.transform, "HPBarBG",
                 new Vector2(0.12f, 0.93f), new Vector2(0.45f, 0.975f),
                 new Color(0.2f, 0.05f, 0.05f, 1f));
             var hpFill = MakeBarFill(hpBg.transform, "HPFill", new Color(0.9f, 0.15f, 0.05f, 1f));
 
             // ── Agni Kund health bar ───────────────────────────────────────
-            MakeLabel(canvasGo.transform, "AKLabel", "🔥",
-                new Vector2(0.02f, 0.89f), new Vector2(0.12f, 0.94f), 26, TextAlignmentOptions.MidlineLeft);
+            MakeLabel(canvasGo.transform, "AKLabel", "AK",
+                new Vector2(0.02f, 0.89f), new Vector2(0.12f, 0.94f), 26, TextAnchor.MiddleLeft);
             var akBg = MakeBarBG(canvasGo.transform, "AgniBarBG",
                 new Vector2(0.12f, 0.895f), new Vector2(0.45f, 0.935f),
                 new Color(0.15f, 0.08f, 0.02f, 1f));
@@ -318,14 +317,14 @@ namespace AGNIDAWN.Bootstrap
 
             // ── Timer (top center) ─────────────────────────────────────────
             var timerLbl = MakeLabel(canvasGo.transform, "TimerLabel", "20:00",
-                new Vector2(0.35f, 0.9f), new Vector2(0.65f, 1f), 44, TextAlignmentOptions.Center);
+                new Vector2(0.35f, 0.9f), new Vector2(0.65f, 1f), 44, TextAnchor.MiddleCenter);
             timerLbl.color = new Color(1f, 0.85f, 0.3f, 1f);
 
             // ── Kill counter (top right) ───────────────────────────────────
-            MakeLabel(canvasGo.transform, "KillsIcon", "☠",
-                new Vector2(0.78f, 0.92f), new Vector2(0.88f, 0.99f), 32, TextAlignmentOptions.Center);
+            MakeLabel(canvasGo.transform, "KillsIcon", "Kills",
+                new Vector2(0.78f, 0.92f), new Vector2(0.88f, 0.99f), 22, TextAnchor.MiddleCenter);
             var killsLbl = MakeLabel(canvasGo.transform, "KillsLabel", "0",
-                new Vector2(0.86f, 0.92f), new Vector2(0.99f, 0.99f), 38, TextAlignmentOptions.MidlineLeft);
+                new Vector2(0.86f, 0.92f), new Vector2(0.99f, 0.99f), 38, TextAnchor.MiddleLeft);
             killsLbl.color = Color.white;
 
             // ── HUD updater ────────────────────────────────────────────────
@@ -379,10 +378,10 @@ namespace AGNIDAWN.Bootstrap
             var pauseBtn = pauseBtnGo.AddComponent<Button>();
             var pauseLbl = new GameObject("Lbl");
             pauseLbl.transform.SetParent(pauseBtnGo.transform, false);
-            var pl = pauseLbl.AddComponent<TextMeshProUGUI>();
-            pl.text      = "❚❚";
+            var pl = pauseLbl.AddComponent<Text>();
+            pl.text      = "||";
             pl.fontSize  = 26;
-            pl.alignment = TextAlignmentOptions.Center;
+            pl.alignment = TextAnchor.MiddleCenter;
             pl.raycastTarget = false;
             var plRect = pl.rectTransform;
             plRect.anchorMin = Vector2.zero;
@@ -417,14 +416,14 @@ namespace AGNIDAWN.Bootstrap
             return img;
         }
 
-        private static TextMeshProUGUI MakeLabel(Transform parent, string name, string text,
-            Vector2 anchorMin, Vector2 anchorMax, float fontSize, TextAlignmentOptions align)
+        private static Text MakeLabel(Transform parent, string name, string text,
+            Vector2 anchorMin, Vector2 anchorMax, float fontSize, TextAnchor align)
         {
             var go  = new GameObject(name);
             go.transform.SetParent(parent, false);
-            var lbl = go.AddComponent<TextMeshProUGUI>();
+            var lbl = go.AddComponent<Text>();
             lbl.text      = text;
-            lbl.fontSize  = fontSize;
+            lbl.fontSize  = (int)fontSize;
             lbl.alignment = align;
             lbl.color     = Color.white;
             var rect = lbl.rectTransform;
@@ -548,10 +547,10 @@ namespace AGNIDAWN.Bootstrap
     // ── HUD updater ────────────────────────────────────────────────────────────
     public class HUDUpdater : MonoBehaviour
     {
-        public RectTransform    HPFill;
-        public RectTransform    AKFill;
-        public TextMeshProUGUI  TimerText;
-        public TextMeshProUGUI  KillsText;
+        public RectTransform HPFill;
+        public RectTransform AKFill;
+        public Text          TimerText;
+        public Text          KillsText;
 
         private HealthSystem  _playerHP;
         private AgniKundMini  _agniHP;

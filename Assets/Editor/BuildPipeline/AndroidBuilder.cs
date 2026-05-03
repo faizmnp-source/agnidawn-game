@@ -39,7 +39,27 @@ namespace AGNIDAWN.Build
             if (!string.IsNullOrEmpty(outputDir))
                 Directory.CreateDirectory(outputDir);
 
-            // ── PlayerSettings ───────────���─────────────────────────────────
+            // ── Force SDK / JDK paths so Unity skips the sdkmanager update check ──
+            // Unity uses EditorPrefs "AndroidSdkRoot" and "JdkPath" to locate tools.
+            // When these are empty the batch-mode build tries to run sdkmanager.bat
+            // which requires admin elevation and exits with code -1 ("version 0.0").
+            string unityAndroidRoot = Path.Combine(
+                Path.GetDirectoryName(EditorApplication.applicationPath)!,
+                "Data", "PlaybackEngines", "AndroidPlayer");
+            string sdkRoot = Path.Combine(unityAndroidRoot, "SDK");
+            string jdkRoot = Path.Combine(unityAndroidRoot, "OpenJDK");
+            if (Directory.Exists(sdkRoot))
+            {
+                EditorPrefs.SetString("AndroidSdkRoot", sdkRoot);
+                Debug.Log($"[AndroidBuilder] SDK root set → {sdkRoot}");
+            }
+            if (Directory.Exists(jdkRoot))
+            {
+                EditorPrefs.SetString("JdkPath", jdkRoot);
+                Debug.Log($"[AndroidBuilder] JDK path set → {jdkRoot}");
+            }
+
+            // ── PlayerSettings ────────────────────────────────────────────────
             PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.minSdkVersion       = AndroidSdkVersions.AndroidApiLevel26;
