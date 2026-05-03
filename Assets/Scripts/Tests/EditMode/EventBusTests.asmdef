@@ -19,7 +19,8 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "nunit.framework.dll"
+        "nunit.framework.dll",
+        "Unity.PerformanceTesting.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [],

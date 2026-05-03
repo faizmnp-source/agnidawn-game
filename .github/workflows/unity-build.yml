@@ -1,4 +1,4 @@
-name: Unity Build & Test
+name: AGNIDAWN — Build & Test
 
 on:
   push:
@@ -6,36 +6,200 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Cancel in-flight runs on the same ref to save CI minutes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UNITY_VERSION: 6000.0.35f1     # pin to project version
+  PROJECT_PATH: .
+
+# ──────────────────────────────────────────────────────────────────────────────
 jobs:
-  test:
-    name: Run Unity Tests
+
+  # ── 1. EditMode unit tests (fastest — no scene load) ────────────────────────
+  test-editmode:
+    name: EditMode Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           lfs: true
-      - uses: game-ci/unity-test-runner@v4
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-EditMode-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-EditMode-
+
+      - name: Run EditMode Tests
+        uses: game-ci/unity-test-runner@v4
+        id: editmode-tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:   ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          testMode: playmode
-          artifactsPath: test-results
+          unityVersion:      ${{ env.UNITY_VERSION }}
+          projectPath:       ${{ env.PROJECT_PATH }}
+          testMode:          editmode
+          artifactsPath:     test-results/editmode
+          githubToken:       ${{ secrets.GITHUB_TOKEN }}
+          checkName:         EditMode Test Results
+          coverageOptions:   generateAdditionalMetrics;generateHtmlReport;generateBadgeReport;assemblyFilters:+AGNIDAWN.*
 
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EditMode-Results-${{ github.sha }}
+          path: test-results/editmode
+          retention-days: 14
+
+  # ── 2. PlayMode integration tests ────────────────────────────────────────────
+  test-playmode:
+    name: PlayMode Tests
+    needs: test-editmode
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-PlayMode-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-PlayMode-
+
+      - name: Run PlayMode Tests
+        uses: game-ci/unity-test-runner@v4
+        id: playmode-tests
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:   ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion:   ${{ env.UNITY_VERSION }}
+          projectPath:    ${{ env.PROJECT_PATH }}
+          testMode:       playmode
+          artifactsPath:  test-results/playmode
+          githubToken:    ${{ secrets.GITHUB_TOKEN }}
+          checkName:      PlayMode Test Results
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PlayMode-Results-${{ github.sha }}
+          path: test-results/playmode
+          retention-days: 14
+
+  # ── 3. PC Standalone build (develop + main) ───────────────────────────────
   build-pc:
     name: Build PC Standalone
-    needs: test
+    needs: [ test-editmode, test-playmode ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           lfs: true
-      - uses: game-ci/unity-builder@v4
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-PC-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-PC-
+
+      - name: Build StandaloneWindows64
+        uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:   ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
+          unityVersion:   ${{ env.UNITY_VERSION }}
+          projectPath:    ${{ env.PROJECT_PATH }}
           targetPlatform: StandaloneWindows64
-          buildName: Agnidawn
-      - uses: actions/upload-artifact@v3
+          buildName:      Agnidawn
+
+      - uses: actions/upload-artifact@v4
         with:
           name: Agnidawn-PC-${{ github.sha }}
           path: build/StandaloneWindows64
+          retention-days: 30
+
+  # ── 4. Android build (main branch only) ───────────────────────────────────
+  build-android:
+    name: Build Android APK
+    needs: [ test-editmode, test-playmode ]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-Android-
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ${{ env.PROJECT_PATH }}/agnidawn.keystore
+
+      - name: Build Android APK
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:   ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          ANDROID_KEYSTORE_NAME:     agnidawn.keystore
+          ANDROID_KEYSTORE_BASE64:   ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASS:     ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEYALIAS_NAME:     ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          ANDROID_KEYALIAS_PASS:     ${{ secrets.ANDROID_KEYALIAS_PASS }}
+        with:
+          unityVersion:      ${{ env.UNITY_VERSION }}
+          projectPath:       ${{ env.PROJECT_PATH }}
+          targetPlatform:    Android
+          buildName:         Agnidawn
+          androidExportType: androidPackage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Agnidawn-Android-${{ github.sha }}
+          path: build/Android
+          retention-days: 30
+
+  # ── 5. Auto-tag semantic version on main merge ────────────────────────────
+  tag-release:
+    name: Tag Release Version
+    needs: [ build-pc, build-android ]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from ProjectSettings
+        id: version
+        run: |
+          VERSION=$(grep -oP '(?<=bundleVersion: ).*' ProjectSettings/ProjectSettings.asset | tr -d '[:space:]')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create Git Tag
+        run: |
+          VERSION=v${{ steps.version.outputs.version }}
+          git config user.email "ci@agnidawn.game"
+          git config user.name "AGNIDAWN CI"
+          git tag -a "$VERSION" -m "Release $VERSION — automated tag from CI"
+          git push origin "$VERSION"
