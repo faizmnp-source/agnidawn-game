@@ -890,4 +890,11 @@ namespace AGNIDAWN.Bootstrap
         {
             if (Enemy == null || _maxHP <= 0f) return;
             float pct = Enemy.HP / _maxHP;
-            transform.localScale = new Vector3(_f
+            transform.localScale = new Vector3(_fullScale.x * pct, _fullScale.y, _fullScale.z);
+
+            var sr = GetComponent<SpriteRenderer>();
+            if (sr != null)
+                sr.color = Color.Lerp(Color.red, new Color(0.15f, 0.9f, 0.15f), pct);
+        }
+    }
+}
