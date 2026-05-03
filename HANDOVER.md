@@ -20,6 +20,8 @@
 | Phase 7 | Biomes — BiomeData SO, BiomeManager (timed rotation), SpawnManager registry+biome hooks, BaseEnemy slow/knockback consumers, SudarshanaChakra fix, BiomeSystemTests | Scheduled Task | `b9c37c5` | ✅ Done |
 | Phase 8 | Meta-Progression & Shrine System — DivineShardManager, ShrineData/Manager (5 shrines), LoreFragment/Manager, DifficultyData/Manager, SaveSystem extended, MetaProgressionTests (20 tests) | Scheduled Task | `c1ddfcf` | ✅ Done |
 | Phase 9 | FMOD Audio Integration — AudioEventData SO, AudioManager (FMOD+Unity fallback), MusicManager (biome/boss adaptive), SFXController (EventBus→audio), AudioBusController, AudioSystemTests (25 tests) | Scheduled Task | `2102384` | ✅ Done |
+| Phase 10 | URP Post-Processing — AgniTierVisualData SO (5-tier bloom/vignette/CA), AgniVisualStateManager (lerp coroutines), CameraShakeController, ScreenFlashController, VisualSystemTests (18 tests) | Scheduled Task | `43d4100` | ✅ Done |
+| Phase 11 | VFX & Shader System — AGNIDAWN.VFX assembly, VFXEventData SO, VFXManager (EventBus→pool), AgniFlameController (5-tier particle/light), PlayerDivineAura (tier 4/5 corona), BossShockwaveController, MandalaFXController (Brahmastra/Pashupatastra), VFXSystemTests (22 tests) | Scheduled Task | `764d117` | ✅ Done |
 
 ---
 
@@ -38,6 +40,10 @@ AGNIDAWN.Bosses   (refs Core + Player + Enemies)
 AGNIDAWN.Gameplay (refs Core + Player + Enemies)
     ↓
 AGNIDAWN.Audio    (refs Core + Player + Enemies + Bosses + Gameplay)
+    ↓
+AGNIDAWN.Visuals  (refs Core only — post-processing, camera shake, screen flash)
+    ↓
+AGNIDAWN.VFX      (refs Core only — particles, flames, aura, shockwave, mandala)
     ↓
 AGNIDAWN.Tests.EditMode (refs all above, Editor-only)
 ```
@@ -116,7 +122,8 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 | FAI-12 | Phase 7 | Biomes (Forest, Desert, Mountain, Ocean, Underworld) | ✅ Done |
 | FAI-13 | Phase 8 | Meta-Progression & Shrine System (Divine Shards, 5 Shrines, Lore, Difficulty) | ✅ Done |
 | FAI-14 | Phase 9 | FMOD Audio Integration | ✅ Done |
-| FAI-15 | Phase 10 | URP Post-Processing (per-tier Agni visual states) | Pending |
+| FAI-15 | Phase 10 | URP Post-Processing (per-tier Agni visual states) | ✅ Done |
+| FAI-16 | Phase 11 | VFX & Shader System | ✅ Done |
 
 ---
 
@@ -139,6 +146,8 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 - `2026-05-02` — Scheduled Task: Phase 7 — Biomes (BiomeData SO, BiomeManager, SpawnManager registry, BaseEnemy slow/knockback, SudarshanaChakra fix, 14 tests) commit `b9c37c5`
 - `2026-05-02` — Scheduled Task: Phase 8 — Meta-Progression & Shrine System (SaveSystem extended, DivineShardManager, ShrineData/Manager, LoreFragment/Manager, DifficultyData/Manager, 20 EditMode tests) commit `c1ddfcf`
 - `2026-05-02` — Scheduled Task: Phase 9 — FMOD Audio Integration (AGNIDAWN.Audio assembly, AudioEventData SO, AudioManager FMOD+Unity fallback, MusicManager biome/boss adaptive music, SFXController EventBus→SFX, AudioBusController, 25 EditMode tests)
+- `2026-05-03` — Scheduled Task: Phase 10 — URP Post-Processing (AgniTierVisualData SO, AgniVisualStateManager, CameraShakeController, ScreenFlashController, 18 EditMode tests) — pushed commit `43d4100`
+- `2026-05-03` — Scheduled Task: Phase 11 — VFX & Shader System (AGNIDAWN.VFX assembly, VFXEventData SO, VFXManager, AgniFlameController, PlayerDivineAura, BossShockwaveController, AutoReturnToPool, MandalaFXController, 22 EditMode tests) — commit `764d117`
 
 ---
 *When you finish a coding session, add a row to "Last Updated" and update the "WHO BUILT WHAT" table.*
