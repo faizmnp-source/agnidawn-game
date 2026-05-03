@@ -112,9 +112,9 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 ## KNOWN ISSUES / TECH DEBT
 - [ ] `BossSystemTests.cs` — namespace was `AGNIDAWN.Tests`, should be `AGNIDAWN.Tests.EditMode` (being fixed)
 - [ ] `AGNIDAWN.Bosses.asmdef` was missing (being fixed)
-- [ ] `BaseBoss.OnEnable()` subscribes to `OnPlayerDamagedWithSource` but should listen to its own HealthSystem's damage event — low priority
-- [ ] `GameManager.cs` does not emit `OnMinutePassed` yet — BossManager needs this wired in GameManager.Update()
-- [ ] No `QualityManager.cs` yet (FAI auto-detect GPU tier)
+- [x] `BaseBoss.OnEnable()` — wrong EventBus subscription removed; death detection via Update() polling — fixed Phase 16 ✅
+- [x] `GameManager.cs` emits `OnMinutePassed` — wired in Phase 16 ✅
+- [x] `QualityManager.cs` added — GPU tier auto-detect (Low/Medium/High) in Phase 16 ✅
 - [ ] Phase 6 astra prefabs not created yet — each Astra script requires a Unity prefab with its component assigned in AstraData.projectilePrefab
 - [x] `OnSlowApplied` / `OnKnockbackApplied` — consumers added to BaseEnemy (Phase 7) ✅
 - [x] SudarshanaChakra `FindNearestEnemy()` — replaced with SpawnManager.ActiveEnemies registry (Phase 7) ✅
@@ -133,6 +133,8 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 | FAI-14 | Phase 12 | UI/UX System — BaseUIPanel, UIManager, HUD, MainMenu, LevelUp, BossIntro, BossHP, Pause, Death, Victory + 14 tests | ✅ Done |
 | FAI-17 | Phase 13 | QA, Testing & Build Pipeline — CI/CD rewrite (editmode+playmode+Android+auto-tag), PerformanceTests, BuildValidationTests, QASystemTests (20 tests), run_tests.ps1, build_android.ps1, AndroidBuilder.cs | ✅ Done |
 | FAI-19 | Phase 14 | Mobile Testing — APK built (84.7 MB IL2CPP/ARM64 debug), installed on Samsung Z Fold7 (RZGYA0KX12E) via Unity ADB, launched, logcat verified: Vulkan+Adreno init, AAudio active, 1080×2520 SurfaceView, SetGameState mode:CONTENT — zero Unity errors | ✅ Done |
+| —      | Phase 15 | Bootstrap & Playable Prototype — AGNIDAWN.Bootstrap assembly, GameBootstrap (no-prefab scene wiring: CameraFollow, AgniKundMini, VirtualJoystick, SimpleEnemySpawner, HUDUpdater), MainMenuBootstrap, SpriteFactory primitives. Playable on device with zero ScriptableObjects. | ✅ Done |
+| FAI-20 | Phase 16 | Game Integration & Critical Fixes — GameManager emits OnMinutePassed (bosses now spawn), BaseBoss health listener fixed (polling vs wrong EventBus event), QualityManager (GPU tier auto-detect, 3 tiers, Z Fold7→High), GameBootstrap wires QualityManager, IntegrationTests (10 tests) | ✅ Done |
 
 ---
 
@@ -159,6 +161,8 @@ Format: `Prefix_Name` — e.g. `Bullet_Trishul`, `Enemy_Rakshasa`, `VFX_AgniHit`
 - `2026-05-03` — Scheduled Task: Phase 11 — VFX & Shader System (AGNIDAWN.VFX assembly, VFXEventData SO, VFXManager, AgniFlameController, PlayerDivineAura, BossShockwaveController, AutoReturnToPool, MandalaFXController, 22 EditMode tests) — commit `764d117`
 - `2026-05-03` — Live Session: Phase 13 — QA & Build Pipeline (CI rewrite, PerformanceTests, BuildValidationTests, QASystemTests 20 tests, run_tests.ps1, build_android.ps1, AndroidBuilder.cs). FAI-17 → Done — commits `45505e0` + `3f6af32`
 - `2026-05-03` — Live Session: Phase 12 — UI/UX System (AGNIDAWN.UI assembly, BaseUIPanel, UIManager, HUDController, MainMenuUI, LevelUpUI, BossIntroOverlayUI, BossHealthBarUI, PauseMenuUI, DeathScreenUI, VictoryScreenUI, UISystemTests 14 tests). Fixed: UI asmdef Bosses ref, GameManager TotalKills/CurrentLevel/RestartRun/ReturnToMainMenu, bestRunTimeSeconds field name. FAI-14 → Done — commit `1307310`
+- `2026-05-03` — Live Session: Phase 15 — Bootstrap & Playable Prototype (AGNIDAWN.Bootstrap assembly, GameBootstrap, MainMenuBootstrap, SpriteFactory, AgniKundMini, VirtualJoystick, SimpleEnemySpawner, CameraFollow, HUDUpdater) — commits `cc118fa` + `dd2b755`
+- `2026-05-03` — Scheduled Task: Phase 16 — Game Integration & Critical Fixes (GameManager OnMinutePassed wired, BaseBoss death detection fixed, QualityManager new singleton, IntegrationTests 10 tests) — commits `555afe7` + `4cb4747`
 
 ---
 *When you finish a coding session, add a row to "Last Updated" and update the "WHO BUILT WHAT" table.*
