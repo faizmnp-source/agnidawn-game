@@ -96,6 +96,12 @@ namespace AGNIDAWN.UI
             OnHide();
         }
 
+        /// <summary>Allow external callers (e.g. UIManager stack) to toggle interactivity.</summary>
+        public void SetInteractable(bool value)
+        {
+            if (canvasGroup != null) canvasGroup.interactable = value;
+        }
+
         #endregion
 
         // ──────────────────────────────────────────────────────────────────

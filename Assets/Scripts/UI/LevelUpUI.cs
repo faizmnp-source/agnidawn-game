@@ -108,7 +108,7 @@ namespace AGNIDAWN.UI
             _onSelect = onSelect;
 
             if (boonNameText    != null) boonNameText.text    = boon.displayName;
-            if (deityNameText   != null) deityNameText.text   = boon.deityName;
+            if (deityNameText   != null) deityNameText.text   = boon.deity;
             if (rarityText      != null)
             {
                 rarityText.text  = boon.rarity.ToString().ToUpper();
@@ -116,7 +116,7 @@ namespace AGNIDAWN.UI
             }
             if (descriptionText != null) descriptionText.text = boon.description;
             if (cardBorder      != null) cardBorder.color     = rarityColor;
-            if (deityIcon       != null && boon.deityIcon != null) deityIcon.sprite = boon.deityIcon;
+            if (deityIcon       != null && boon.icon != null) deityIcon.sprite = boon.icon;
 
             selectButton?.onClick.RemoveAllListeners();
             selectButton?.onClick.AddListener(() => _onSelect?.Invoke());

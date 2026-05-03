@@ -38,6 +38,17 @@ namespace AGNIDAWN.UI
         [SerializeField] private TextMeshProUGUI agniTierNameText;
         [SerializeField] private Image       agniFlameIcon;
 
+        // Tier names mirrored from AgniKund (UI assembly can't reference Gameplay)
+        private static readonly string[] TIER_NAMES =
+        {
+            "",             // 0 — unused
+            "MRITYUPRAYA",  // 1 — near death
+            "KSHEEN",       // 2 — weakening
+            "SADHARAN",     // 3 — normal
+            "PRABHAVA",     // 4 — strong
+            "MAHAAGNI"      // 5 — maximum
+        };
+
         // Tier colours: Tier1=dying red → Tier5=divine gold
         private static readonly Color[] TIER_COLORS =
         {
@@ -207,7 +218,7 @@ namespace AGNIDAWN.UI
                                                               : Color.white;
             if (agniTierNameText != null)
                 agniTierNameText.text = (_currentTier >= 1 && _currentTier <= 5)
-                                      ? AgniKund.TierNames[_currentTier]
+                                      ? TIER_NAMES[_currentTier]
                                       : "";
         }
 

@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using AGNIDAWN.Core;
 using AGNIDAWN.UI;
+using static AGNIDAWN.Core.SaveSystem;
 
 namespace AGNIDAWN.Tests.EditMode
 {

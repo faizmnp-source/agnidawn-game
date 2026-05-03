@@ -26,7 +26,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ── Config ────────────────────────────────────────────────────────────────────
-$UnityVersion   = "6000.0.35f1"
+$UnityVersion   = "6000.4.2f1"
 $UnityExe       = "C:\Program Files\Unity\Hub\Editor\$UnityVersion\Editor\Unity.exe"
 $ProjectPath    = Resolve-Path "$PSScriptRoot\.."
 $BuildDir       = "$ProjectPath\build\Android"

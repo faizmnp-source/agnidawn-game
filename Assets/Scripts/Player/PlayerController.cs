@@ -211,6 +211,18 @@ namespace AGNIDAWN.Player
         public Vector2 GetVelocity() => _rb.linearVelocity;
         public bool    IsDashing()   => _isDashing;
 
+        // ── Touch / virtual-joystick bridge ───────────────────────────────────
+        /// <summary>
+        /// Called by VirtualJoystick (and any other non-InputSystem source) to
+        /// drive movement. Equivalent to what OnMove(InputValue) does.
+        /// </summary>
+        public void SetMoveInput(Vector2 dir) => _inputDir = dir;
+
+        /// <summary>
+        /// Triggers a dash attempt from virtual dash button.
+        /// </summary>
+        public void TriggerDash() => TryDash();
+
         #endregion
     }
 }

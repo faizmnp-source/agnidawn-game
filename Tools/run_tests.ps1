@@ -17,7 +17,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ── Locate Unity ───────────────────────────────────────────────────────────────
-$UnityVersion = "6000.0.35f1"
+$UnityVersion = "6000.4.2f1"
 $UnityExe = "C:\Program Files\Unity\Hub\Editor\$UnityVersion\Editor\Unity.exe"
 
 if (-not (Test-Path $UnityExe)) {

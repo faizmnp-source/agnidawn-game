@@ -68,6 +68,24 @@ namespace AGNIDAWN.Core
             }
         }
 
+        /// <summary>Get a pooled object by key only (pool must have been pre-warmed; returns null if unknown key).</summary>
+        public GameObject Get(string key)
+        {
+            if (!_pools.TryGetValue(key, out var pool)) return null;
+            GameObject obj;
+            if (pool.inactive.Count > 0)
+            {
+                obj = pool.inactive.Dequeue();
+                if (obj == null) obj = CreateNew(pool);
+            }
+            else
+            {
+                obj = CreateNew(pool);
+            }
+            obj.SetActive(true);
+            return obj;
+        }
+
         /// <summary>Get a pooled object (creates one if pool is empty).</summary>
         public GameObject Get(string key, GameObject prefab, Vector3 position, Quaternion rotation)
         {

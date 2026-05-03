@@ -2,7 +2,8 @@
     "name": "AGNIDAWN.Player",
     "rootNamespace": "AGNIDAWN.Player",
     "references": [
-        "AGNIDAWN.Core"
+        "AGNIDAWN.Core",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using AGNIDAWN.Core;
-using AGNIDAWN.Gameplay.Biomes;
+using AGNIDAWN.Gameplay;
 
 namespace AGNIDAWN.Audio
 {
@@ -72,24 +72,24 @@ namespace AGNIDAWN.Audio
 
         private void OnEnable()
         {
-            EventBus.Subscribe<BiomeData>(GameManager.OnBiomeEntered, OnBiomeEntered);
-            EventBus.Subscribe<BiomeData>(GameManager.OnBiomeExited,  OnBiomeExited);
-            EventBus.Subscribe(GameManager.EVT_GAME_START, OnGameStart);
-            EventBus.Subscribe(GameManager.EVT_GAME_OVER,  OnGameOver);
-            EventBus.Subscribe(GameManager.EVT_VICTORY,    OnVictory);
-            EventBus.Subscribe<string>(GameManager.OnBossSpawned, OnBossSpawned);
-            EventBus.Subscribe<string>(GameManager.OnBossDied,    OnBossDied);
+            EventBus.On<BiomeData>("OnBiomeEntered", OnBiomeEntered);
+            EventBus.On<BiomeData>("OnBiomeExited",  OnBiomeExited);
+            EventBus.On(GameManager.EVT_GAME_START, OnGameStart);
+            EventBus.On(GameManager.EVT_GAME_OVER,  OnGameOver);
+            EventBus.On(GameManager.EVT_VICTORY,    OnVictory);
+            EventBus.On<string>("OnBossSpawned", OnBossSpawned);
+            EventBus.On<string>("OnBossDied",    OnBossDied);
         }
 
         private void OnDisable()
         {
-            EventBus.Unsubscribe<BiomeData>(GameManager.OnBiomeEntered, OnBiomeEntered);
-            EventBus.Unsubscribe<BiomeData>(GameManager.OnBiomeExited,  OnBiomeExited);
-            EventBus.Unsubscribe(GameManager.EVT_GAME_START, OnGameStart);
-            EventBus.Unsubscribe(GameManager.EVT_GAME_OVER,  OnGameOver);
-            EventBus.Unsubscribe(GameManager.EVT_VICTORY,    OnVictory);
-            EventBus.Unsubscribe<string>(GameManager.OnBossSpawned, OnBossSpawned);
-            EventBus.Unsubscribe<string>(GameManager.OnBossDied,    OnBossDied);
+            EventBus.Off<BiomeData>("OnBiomeEntered", OnBiomeEntered);
+            EventBus.Off<BiomeData>("OnBiomeExited",  OnBiomeExited);
+            EventBus.Off(GameManager.EVT_GAME_START, OnGameStart);
+            EventBus.Off(GameManager.EVT_GAME_OVER,  OnGameOver);
+            EventBus.Off(GameManager.EVT_VICTORY,    OnVictory);
+            EventBus.Off<string>("OnBossSpawned", OnBossSpawned);
+            EventBus.Off<string>("OnBossDied",    OnBossDied);
         }
 
         // ── Event Handlers ────────────────────────────────────────────────────────

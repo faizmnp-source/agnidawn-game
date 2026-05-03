@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using AGNIDAWN.Core;
+using AGNIDAWN.Gameplay;
 
 namespace AGNIDAWN.Tests.EditMode
 {

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using AGNIDAWN.Core;
+using AGNIDAWN.Bosses;
 
 namespace AGNIDAWN.UI
 {
@@ -154,7 +155,7 @@ namespace AGNIDAWN.UI
         public void Push(BaseUIPanel panel)
         {
             if (panel == null) return;
-            if (_stack.Count > 0) _stack.Peek().canvasGroup.interactable = false;
+            if (_stack.Count > 0) _stack.Peek().SetInteractable(false);
             _stack.Push(panel);
             panel.Show();
         }
@@ -163,7 +164,7 @@ namespace AGNIDAWN.UI
         {
             if (_stack.Count == 0) return;
             _stack.Pop().Hide();
-            if (_stack.Count > 0) _stack.Peek().canvasGroup.interactable = true;
+            if (_stack.Count > 0) _stack.Peek().SetInteractable(true);
         }
 
         public void HideAll()

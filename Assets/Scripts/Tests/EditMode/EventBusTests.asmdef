@@ -10,7 +10,10 @@
         "AGNIDAWN.Audio",
         "AGNIDAWN.Visuals",
         "AGNIDAWN.VFX",
-        "AGNIDAWN.UI"
+        "AGNIDAWN.UI",
+        "Unity.PerformanceTesting",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
     ],
     "includePlatforms": [
         "Editor"
@@ -19,8 +22,7 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "nunit.framework.dll",
-        "Unity.PerformanceTesting.dll"
+        "nunit.framework.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [],

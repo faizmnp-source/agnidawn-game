@@ -3,7 +3,8 @@
     "rootNamespace": "AGNIDAWN.UI",
     "references": [
         "AGNIDAWN.Core",
-        "AGNIDAWN.Bosses"
+        "AGNIDAWN.Bosses",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

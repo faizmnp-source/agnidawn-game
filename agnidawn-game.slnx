@@ -1,4 +1,13 @@
 ﻿<Solution>
+  <Project Path="AGNIDAWN.Gameplay.csproj" />
+  <Project Path="AGNIDAWN.Audio.csproj" />
+  <Project Path="AGNIDAWN.Visuals.csproj" />
   <Project Path="AGNIDAWN.Tests.EditMode.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="AGNIDAWN.Bosses.csproj" />
+  <Project Path="AGNIDAWN.UI.csproj" />
+  <Project Path="AGNIDAWN.VFX.csproj" />
+  <Project Path="AGNIDAWN.Editor.csproj" />
+  <Project Path="AGNIDAWN.Core.csproj" />
+  <Project Path="AGNIDAWN.Enemies.csproj" />
+  <Project Path="AGNIDAWN.Player.csproj" />
 </Solution>

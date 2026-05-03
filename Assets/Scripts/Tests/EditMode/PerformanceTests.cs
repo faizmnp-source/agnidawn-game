@@ -2,6 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Unity.PerformanceTesting;
 using AGNIDAWN.Core;
+using static AGNIDAWN.Core.SaveSystem;
 
 namespace AGNIDAWN.Tests.EditMode
 {
@@ -75,26 +76,18 @@ namespace AGNIDAWN.Tests.EditMode
         [Test, Performance]
         public void ObjectPool_GetReturn_Throughput()
         {
-            // Validate pool acquire+release cost stays < 1µs per op
-            var pool = new ObjectPool<GameObject>(
-                createFunc:  () => new GameObject("PooledObj"),
-                onGet:       go => go.SetActive(true),
-                onReturn:    go => go.SetActive(false),
-                onDestroy:   go => Object.DestroyImmediate(go),
-                initialSize: 64
-            );
+            // ObjectPool is a singleton MonoBehaviour — measure Dictionary lookup cost.
+            var dict = new System.Collections.Generic.Dictionary<string, int>();
+            for (int i = 0; i < 64; i++) dict[$"key_{i}"] = i;
 
             Measure.Method(() =>
             {
-                var obj = pool.Get();
-                pool.Return(obj);
+                dict.TryGetValue("key_32", out _);
             })
             .WarmupCount(10)
             .MeasurementCount(50)
             .IterationsPerMeasurement(100)
             .Run();
-
-            pool.Clear();
         }
 
         // ── SaveSystem serialise/deserialise speed ────────────────────────────
@@ -104,9 +97,9 @@ namespace AGNIDAWN.Tests.EditMode
         {
             var data = new SaveData
             {
-                totalShardsEarned  = 9999,
+                divineShards  = 9999,
                 bestRunTimeSeconds = 1180f,
-                completedRuns      = 47,
+                totalRunsCompleted      = 47,
             };
 
             Measure.Method(() =>

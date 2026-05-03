@@ -1,7 +1,9 @@
 {
     "name": "AGNIDAWN.Editor",
     "rootNamespace": "AGNIDAWN.Build",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [
         "Editor"
     ],

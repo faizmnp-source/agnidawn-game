@@ -58,56 +58,56 @@ namespace AGNIDAWN.Audio
         private void OnEnable()
         {
             // Weapons
-            EventBus.Subscribe<AstraData>(GameManager.OnAstraFired, OnAstraFired);
-            EventBus.Subscribe<float, Vector2>(GameManager.OnAoEDetonation, OnAoEDetonation);
-            EventBus.Subscribe<Vector2, Vector2>(GameManager.OnLightningChain, OnLightningChain);
-            EventBus.Subscribe<GameObject, float, float>(GameManager.OnSlowApplied, OnSlowApplied);
-            EventBus.Subscribe<GameObject, Vector2, float>(GameManager.OnKnockbackApplied, OnKnockbackApplied);
+            EventBus.On<AstraData>("OnAstraFired", OnAstraFired);
+            EventBus.On<float, Vector2>("OnAoEDetonation", OnAoEDetonation);
+            EventBus.On<Vector2, Vector2>("OnLightningChain", OnLightningChain);
+            EventBus.On<GameObject, float, float>("OnSlowApplied", OnSlowApplied);
+            EventBus.On<GameObject, Vector2, float>("OnKnockbackApplied", OnKnockbackApplied);
 
             // Bosses
-            EventBus.Subscribe<string>(GameManager.OnBossSpawned, OnBossSpawned);
-            EventBus.Subscribe<string, int>(GameManager.OnBossPhaseChanged, OnBossPhaseChanged);
-            EventBus.Subscribe<string>(GameManager.OnBossDied, OnBossDied);
+            EventBus.On<string>("OnBossSpawned", OnBossSpawned);
+            EventBus.On<string, int>("OnBossPhaseChanged", OnBossPhaseChanged);
+            EventBus.On<string>("OnBossDied", OnBossDied);
 
             // Enemies
-            EventBus.Subscribe<string>(GameManager.OnEnemyDied, OnEnemyDied);
+            EventBus.On<string>("OnEnemyDied", OnEnemyDied);
 
             // Meta
-            EventBus.Subscribe<int>(GameManager.OnShardCollected, OnShardCollected);
-            EventBus.Subscribe<string>(GameManager.OnShrineUnlocked, OnShrineUnlocked);
-            EventBus.Subscribe<string>(GameManager.OnLoreCollected, OnLoreCollected);
+            EventBus.On<int>("OnShardCollected", OnShardCollected);
+            EventBus.On<string>("OnShrineUnlocked", OnShrineUnlocked);
+            EventBus.On<string>("OnLoreCollected", OnLoreCollected);
 
             // Agni Kund
-            EventBus.Subscribe<float>(GameManager.OnAgniKundDamaged, OnAgniKundDamaged);
-            EventBus.Subscribe<int, int>(GameManager.OnAgniTierChanged, OnAgniTierChanged);
+            EventBus.On<float>("OnAgniKundDamaged", OnAgniKundDamaged);
+            EventBus.On<int, int>("OnAgniTierChanged", OnAgniTierChanged);
 
             // Player
-            EventBus.Subscribe(GameManager.EVT_LEVEL_UP, OnLevelUp);
+            EventBus.On(GameManager.EVT_LEVEL_UP, OnLevelUp);
 
             // Game state
-            EventBus.Subscribe(GameManager.EVT_GAME_OVER, OnGameOver);
-            EventBus.Subscribe(GameManager.EVT_VICTORY,   OnVictory);
+            EventBus.On(GameManager.EVT_GAME_OVER, OnGameOver);
+            EventBus.On(GameManager.EVT_VICTORY,   OnVictory);
         }
 
         private void OnDisable()
         {
-            EventBus.Unsubscribe<AstraData>(GameManager.OnAstraFired, OnAstraFired);
-            EventBus.Unsubscribe<float, Vector2>(GameManager.OnAoEDetonation, OnAoEDetonation);
-            EventBus.Unsubscribe<Vector2, Vector2>(GameManager.OnLightningChain, OnLightningChain);
-            EventBus.Unsubscribe<GameObject, float, float>(GameManager.OnSlowApplied, OnSlowApplied);
-            EventBus.Unsubscribe<GameObject, Vector2, float>(GameManager.OnKnockbackApplied, OnKnockbackApplied);
-            EventBus.Unsubscribe<string>(GameManager.OnBossSpawned, OnBossSpawned);
-            EventBus.Unsubscribe<string, int>(GameManager.OnBossPhaseChanged, OnBossPhaseChanged);
-            EventBus.Unsubscribe<string>(GameManager.OnBossDied, OnBossDied);
-            EventBus.Unsubscribe<string>(GameManager.OnEnemyDied, OnEnemyDied);
-            EventBus.Unsubscribe<int>(GameManager.OnShardCollected, OnShardCollected);
-            EventBus.Unsubscribe<string>(GameManager.OnShrineUnlocked, OnShrineUnlocked);
-            EventBus.Unsubscribe<string>(GameManager.OnLoreCollected, OnLoreCollected);
-            EventBus.Unsubscribe<float>(GameManager.OnAgniKundDamaged, OnAgniKundDamaged);
-            EventBus.Unsubscribe<int, int>(GameManager.OnAgniTierChanged, OnAgniTierChanged);
-            EventBus.Unsubscribe(GameManager.EVT_LEVEL_UP, OnLevelUp);
-            EventBus.Unsubscribe(GameManager.EVT_GAME_OVER, OnGameOver);
-            EventBus.Unsubscribe(GameManager.EVT_VICTORY,   OnVictory);
+            EventBus.Off<AstraData>("OnAstraFired", OnAstraFired);
+            EventBus.Off<float, Vector2>("OnAoEDetonation", OnAoEDetonation);
+            EventBus.Off<Vector2, Vector2>("OnLightningChain", OnLightningChain);
+            EventBus.Off<GameObject, float, float>("OnSlowApplied", OnSlowApplied);
+            EventBus.Off<GameObject, Vector2, float>("OnKnockbackApplied", OnKnockbackApplied);
+            EventBus.Off<string>("OnBossSpawned", OnBossSpawned);
+            EventBus.Off<string, int>("OnBossPhaseChanged", OnBossPhaseChanged);
+            EventBus.Off<string>("OnBossDied", OnBossDied);
+            EventBus.Off<string>("OnEnemyDied", OnEnemyDied);
+            EventBus.Off<int>("OnShardCollected", OnShardCollected);
+            EventBus.Off<string>("OnShrineUnlocked", OnShrineUnlocked);
+            EventBus.Off<string>("OnLoreCollected", OnLoreCollected);
+            EventBus.Off<float>("OnAgniKundDamaged", OnAgniKundDamaged);
+            EventBus.Off<int, int>("OnAgniTierChanged", OnAgniTierChanged);
+            EventBus.Off(GameManager.EVT_LEVEL_UP, OnLevelUp);
+            EventBus.Off(GameManager.EVT_GAME_OVER, OnGameOver);
+            EventBus.Off(GameManager.EVT_VICTORY,   OnVictory);
         }
 
         // ── Weapon Handlers ───────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ namespace AGNIDAWN.Audio
             if (astra == null) return;
 
             // Per-astra SFX lookup — fall back to generic if no specific clip
-            var data = astra.astraName switch
+            var data = astra.astraId switch
             {
                 "Trishul"      => trishulFire,
                 "Brahmastra"   => brahmastraCharge,

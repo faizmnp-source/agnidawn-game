@@ -1,0 +1,18 @@
+{
+    "name": "AGNIDAWN.Bootstrap",
+    "rootNamespace": "AGNIDAWN.Bootstrap",
+    "references": [
+        "AGNIDAWN.Core",
+        "AGNIDAWN.Player",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

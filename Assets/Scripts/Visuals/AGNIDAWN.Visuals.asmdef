@@ -2,7 +2,9 @@
     "name": "AGNIDAWN.Visuals",
     "rootNamespace": "AGNIDAWN.Visuals",
     "references": [
-        "AGNIDAWN.Core"
+        "AGNIDAWN.Core",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

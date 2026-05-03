@@ -43,7 +43,7 @@ namespace AGNIDAWN.Gameplay
 
         [Header("VFX")]
         [SerializeField] private ParticleSystem flameParticles;
-        [SerializeField] private Light2D        fireLight;
+        [SerializeField] private Light          fireLight;   // standard Unity point light (URP 3D)
 
         // ── State ──────────────────────────────────────────────────────────
         private float _currentHealth;
