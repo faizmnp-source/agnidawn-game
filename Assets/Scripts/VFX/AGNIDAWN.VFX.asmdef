@@ -1,0 +1,16 @@
+{
+    "name": "AGNIDAWN.VFX",
+    "rootNamespace": "AGNIDAWN.VFX",
+    "references": [
+        "AGNIDAWN.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
