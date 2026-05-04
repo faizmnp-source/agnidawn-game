@@ -35,11 +35,11 @@ namespace AGNIDAWN.Bootstrap
         // With orthoSize=6 the viewport runs from y=-6 to y=+6.
         // Default -3.5 = roughly 80 % down the arena, matching a typical front-stage floor.
         private const float GROUND_PLATFORM_Y  = -3.5f;
-        // Player pivot sits this far above the ground surface so feet are flush.
-        // = capsule-bottom offset (0.75) + ground collider half-height (0.05)
-        private const float PLAYER_SPAWN_Y     = GROUND_PLATFORM_Y + 0.80f;
-        // Shadow hovers 2 cm above ground surface so it doesn't z-fight.
-        private const float SHADOW_Y           = GROUND_PLATFORM_Y + 0.02f;
+        // AgniRiggedCharacter origin == feet.  Player root spawns AT ground surface.
+        // Tiny +0.10 gap lets physics settle without tunnelling on first frame.
+        private const float PLAYER_SPAWN_Y     = GROUND_PLATFORM_Y + 0.10f;
+        // Shadow sits just above ground surface (avoids z-fight with collider).
+        private const float SHADOW_Y           = GROUND_PLATFORM_Y + 0.04f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Init()
@@ -233,7 +233,7 @@ namespace AGNIDAWN.Bootstrap
             go.tag   = "Player";
             go.layer = LayerMask.NameToLayer("Default");
             // Spawn with feet flush on the ground platform surface.
-            // PLAYER_SPAWN_Y = GROUND_PLATFORM_Y + 0.80 so bottom of capsule sits on top of collider.
+            // Origin = feet. PLAYER_SPAWN_Y = GROUND_PLATFORM_Y + 0.10 (tiny gap for physics settle).
             go.transform.position = new Vector3(0f, PLAYER_SPAWN_Y, 0f);
 
             // Sprite root — rigged 20-part Agni character.
@@ -257,37 +257,27 @@ namespace AGNIDAWN.Bootstrap
             // Prevent jitter: keep linear drag low (gravity does the braking)
             rb.linearDamping          = 0f;
 
-            // ── Collider: CapsuleCollider2D with bottom at feet ─────────────
-            // Character height in world units ≈ 1.55 (at SCALE=0.2).
-            // Capsule: size (0.5, 1.6), offset (0, 0.05) → bottom = 0.05-0.80 = -0.75
-            // i.e. feet are 0.75 u below pivot — matches AgniRiggedCharacter bones.
+            // ── Collider: CapsuleCollider2D origin=feet ────────────────────
+            // AgniRiggedCharacter.HIP_Y=3.77 places boot bottoms at AgniVisual Y=0.
+            // AgniVisual is at Player localPos (0,0), so boots == Player origin.
+            // Capsule: offset=(0, 0.80) → bottom=0 (feet), top=1.60 (upper chest).
             var cap = go.AddComponent<CapsuleCollider2D>();
-            cap.direction   = CapsuleDirection2D.Vertical;
-            cap.size        = new Vector2(0.50f, 1.60f);
-            cap.offset      = new Vector2(0f, 0.05f);
-            // Frictionless material so Agni doesn't stick to vertical surfaces
-            var noFriction  = new PhysicsMaterial2D("AgniNoFriction");
-            noFriction.friction    = 0f;
-            noFriction.bounciness  = 0f;
-            cap.sharedMaterial     = noFriction;
+            cap.direction  = CapsuleDirection2D.Vertical;
+            cap.size       = new Vector2(0.45f, 1.55f);
+            cap.offset     = new Vector2(0f, 0.775f);    // bottom = 0.775-0.775 = 0  (feet)
+            var noFriction = new PhysicsMaterial2D("AgniNoFriction");
+            noFriction.friction   = 0f;
+            noFriction.bounciness = 0f;
+            cap.sharedMaterial    = noFriction;
 
-            // ── GroundCheck child GO for visual debugging ──────────────────
+            // ── GroundCheck child GO (position = feet = Player origin) ─────
             var gcGo = new GameObject("GroundCheck");
             gcGo.transform.SetParent(go.transform, false);
-            gcGo.transform.localPosition = new Vector3(0f, -0.80f, 0f);
+            gcGo.transform.localPosition = new Vector3(0f, -0.05f, 0f);
 
             // ── Player systems ──────────────────────────────────────────────
             var health     = go.AddComponent<HealthSystem>();
             var controller = go.AddComponent<PlayerController>();
-
-            // ── Glow indicator ─────────────────────────────────────────────
-            var glowGo = new GameObject("Glow");
-            glowGo.transform.SetParent(go.transform, false);
-            var glowSr = glowGo.AddComponent<SpriteRenderer>();
-            glowSr.sprite       = SpriteFactory.CreateCircle(new Color(1f, 0.45f, 0f, 0.18f), 64);
-            glowSr.sortingOrder = 9;
-            glowGo.transform.localScale = Vector3.one * 1.3f;
-            glowGo.AddComponent<GlowPulser>();
 
             // ── Cache for other systems ─────────────────────────────────────
             PlayerTransform = go.transform;

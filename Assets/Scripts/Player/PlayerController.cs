@@ -24,10 +24,10 @@ namespace AGNIDAWN.Player
 
         [Header("Gravity & Ground")]
         [SerializeField] private float gravityScale    = 3f;
-        // Feet are ~0.75 u below the player pivot (CapsuleCollider2D bottom).
-        // Adjust if character sinks or floats above the platform.
-        [SerializeField] private Vector2 groundCheckOffset = new Vector2(0f, -0.80f);
-        [SerializeField] private float   groundCheckRadius = 0.18f;
+        // Player origin is now AT feet level (AgniRiggedCharacter.HIP_Y=3.77 lifts boots to Y=0).
+        // Small negative offset detects ground just under feet.
+        [SerializeField] private Vector2 groundCheckOffset = new Vector2(0f, -0.05f);
+        [SerializeField] private float   groundCheckRadius = 0.20f;
 
         [Header("Dash — Agni Rush")]
         [SerializeField] private float dashSpeed       = 18f;

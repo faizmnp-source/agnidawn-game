@@ -4,27 +4,40 @@ using UnityEngine;
 namespace AGNIDAWN.Bootstrap
 {
     /// <summary>
-    /// Assembles Agni from 20 individual PNG body parts stored in
-    /// Resources/Characters/AgniParts/.
+    /// Assembles Agni from 20 individual PNG body parts.
     ///
-    /// Builds a pivot-bone hierarchy:
-    ///   hip → spine → neck → head / hair
-    ///            └─ shoulders → upper-arm → elbow → wrist → hand
-    ///   hip → l_hip / r_hip → knee → ankle → boot
+    /// ORIGIN RULE: AgniVisual local Y=0 == feet / ground contact point.
+    /// Hip bone is placed at HIP_Y (3.77 local units) so the bottom of the boots
+    /// sits exactly at Y=0 of this transform. Player root also spawns at feet level,
+    /// so Agni never floats or sinks.
     ///
-    /// Drives procedural idle (breathing, hair flicker) and
-    /// run (leg/arm swing, body bob) via sin-wave math — no Animator required.
+    /// ANIMATION RULE: only localEulerAngles (rotation) are modified at runtime.
+    /// No localPosition changes during animation → no drift, no detached parts.
     ///
-    /// Attach to a child GO of the Player. Reads parent Rigidbody2D for velocity.
+    /// FLIP RULE: transform.localScale.x is negated to face left. All rotations
+    /// are defined in local space so they mirror correctly with the parent scale.
+    ///
+    /// Hierarchy:
+    ///   AgniVisual  (this GO — SCALE=0.20)
+    ///     Agni_Root  (positive-scale flip anchor)
+    ///       hip  (pivot, at HIP_Y so boots bottom == Y=0)
+    ///         spine → neck → hair_top
+    ///         torso sprites, arm chains, leg chains
+    ///         weaponHolder_R  (right wrist → weapon follows hand)
     /// </summary>
     public class AgniRiggedCharacter : MonoBehaviour
     {
-        // ── Visual scale ────────────────────────────────────────────────────
-        // Parts are authored at PPU = 100. SCALE maps them to game world size.
-        // At 0.20 the assembled character is ~2 u tall; camera orthoSize = 6 → 17% of screen.
+        // ── Scale ────────────────────────────────────────────────────────────
         private const float SCALE = 0.20f;
 
-        // ── Bone pivot references ────────────────────────────────────────────
+        // Hip_Y: places boot bottoms exactly at Y=0 in AgniVisual local space.
+        // Derivation: boot_bottom = hip_y − 3.77  →  hip_y = 3.77
+        // (sum: lHip-down=0, lKnee=-1.63, lAnkle=-1.22, boot_center=-0.46, boot_half=-0.46)
+        private const float HIP_Y = 3.77f;
+
+        // ── Bone pivots ───────────────────────────────────────────────────────
+        private Transform _root;          // flip anchor (child of this)
+
         private Transform _hip;
         private Transform _spine;
         private Transform _neck;
@@ -32,17 +45,18 @@ namespace AGNIDAWN.Bootstrap
 
         private Transform _lShoulder, _lUArm, _lElbow, _lWrist;
         private Transform _rShoulder, _rUArm, _rElbow, _rWrist;
+        private Transform _weaponHolder;
 
         private Transform _lHip, _lKnee, _lAnkle;
         private Transform _rHip, _rKnee, _rAnkle;
 
-        // ── Runtime state ────────────────────────────────────────────────────
+        // ── Runtime ───────────────────────────────────────────────────────────
         private Rigidbody2D _rb;
         private float       _t;
-        private float       _runBlend;    // 0 = idle, 1 = run (smooth lerp)
+        private float       _runBlend;
         private bool        _facingLeft;
 
-        // ── Unity lifecycle ──────────────────────────────────────────────────
+        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Start()
         {
@@ -54,208 +68,155 @@ namespace AGNIDAWN.Bootstrap
         {
             _t += Time.deltaTime;
 
-            // Blend toward run when moving, back toward idle when still
-            float speed = (_rb != null) ? _rb.linearVelocity.magnitude : 0f;
-            _runBlend = Mathf.MoveTowards(_runBlend,
-                speed > 0.35f ? 1f : 0f,
-                Time.deltaTime * 7f);
+            float speed = _rb != null ? Mathf.Abs(_rb.linearVelocity.x) : 0f;
+            _runBlend   = Mathf.MoveTowards(_runBlend, speed > 0.3f ? 1f : 0f, Time.deltaTime * 8f);
 
-            // Face movement direction (flip entire visual root on X)
+            // Facing direction: flip the root anchor only (keep AgniVisual at positive scale)
             if (_rb != null && Mathf.Abs(_rb.linearVelocity.x) > 0.1f)
                 _facingLeft = _rb.linearVelocity.x < 0f;
 
-            transform.localScale = new Vector3(
-                _facingLeft ? -SCALE : SCALE,
-                SCALE, SCALE);
+            if (_root != null)
+                _root.localScale = new Vector3(_facingLeft ? -1f : 1f, 1f, 1f);
 
-            // Drive both states; each reads its blend weight
-            AnimateIdle(1f - _runBlend);
-            AnimateRun(_runBlend);
+            Animate();
         }
 
-        // ── Idle animation ───────────────────────────────────────────────────
+        // ── Animation (rotation-only) ─────────────────────────────────────────
 
-        private void AnimateIdle(float b)
+        private void Animate()
         {
-            if (b < 0.01f) return;
+            float idle = 1f - _runBlend;
+            float run  = _runBlend;
+            float c    = Mathf.Sin(_t * 9f);   // ~4.5 strides/sec
 
-            // Chest breathing: small Y offset on spine
-            float breath = Mathf.Sin(_t * 1.3f) * 0.04f * b;
+            // ── Spine: subtle breathing tilt (rotation, no position change) ──
             if (_spine != null)
-                _spine.localPosition = new Vector3(0f, 1.73f + breath, 0f);
+                _spine.localEulerAngles = new Vector3(0f, 0f, Mathf.Sin(_t * 1.3f) * 2f * idle);
 
-            // Hair flame: organic flicker
+            // ── Hair ──────────────────────────────────────────────────────────
             if (_hairTop != null)
             {
-                float flick = Mathf.Sin(_t * 4.1f) * 9f
-                            + Mathf.Sin(_t * 7.3f) * 4f
-                            + Mathf.Sin(_t * 2.7f) * 5f;
-                _hairTop.localEulerAngles = new Vector3(0f, 0f, flick * b);
+                float hairRot = run > 0.05f
+                    ? -15f * run                       // stream back while running
+                    : (Mathf.Sin(_t * 4.1f) * 9f
+                     + Mathf.Sin(_t * 7.3f) * 4f
+                     + Mathf.Sin(_t * 2.7f) * 5f) * idle;
+                _hairTop.localEulerAngles = new Vector3(0f, 0f, hairRot);
             }
 
-            // Arms: subtle hanging sway
-            float sway = Mathf.Sin(_t * 1.6f) * 3f * b;
-            if (_lUArm != null) _lUArm.localEulerAngles = new Vector3(0f, 0f, -90f + sway);
-            if (_rUArm != null) _rUArm.localEulerAngles = new Vector3(0f, 0f,  90f - sway);
+            // ── Arms ─────────────────────────────────────────────────────────
+            float armSwing = c * 26f * run;
+            float armSway  = Mathf.Sin(_t * 1.6f) * 3f * idle;
 
-            // Reset hip bob that run may have applied
-            if (_hip != null)
-            {
-                var p = _hip.localPosition;
-                _hip.localPosition = Vector3.MoveTowards(p, new Vector3(p.x, 0f, p.z),
-                    Time.deltaTime * 2f);
-            }
-        }
+            if (_lUArm != null) _lUArm.localEulerAngles = new Vector3(0f, 0f, -90f + armSway + armSwing);
+            if (_rUArm != null) _rUArm.localEulerAngles = new Vector3(0f, 0f,  90f - armSway - armSwing);
 
-        // ── Run animation ────────────────────────────────────────────────────
+            float elbowFlex = c * 12f * run;
+            if (_lElbow != null) _lElbow.localEulerAngles = new Vector3(0f, 0f,  elbowFlex);
+            if (_rElbow != null) _rElbow.localEulerAngles = new Vector3(0f, 0f, -elbowFlex);
 
-        private void AnimateRun(float b)
-        {
-            if (b < 0.01f) return;
+            // ── Legs ─────────────────────────────────────────────────────────
+            float legSwing = c * 22f * run;
+            if (_lHip != null) _lHip.localEulerAngles = new Vector3(0f, 0f,  legSwing);
+            if (_rHip != null) _rHip.localEulerAngles = new Vector3(0f, 0f, -legSwing);
 
-            float c = Mathf.Sin(_t * 9f);   // ~4.5 strides/sec
-            float c2 = Mathf.Sin(_t * 18f); // double frequency for body bob
+            float lKnee = Mathf.Max(0f, -c) * 20f * run;
+            float rKnee = Mathf.Max(0f,  c) * 20f * run;
+            if (_lKnee != null) _lKnee.localEulerAngles = new Vector3(0f, 0f,  lKnee);
+            if (_rKnee != null) _rKnee.localEulerAngles = new Vector3(0f, 0f, -rKnee);
 
-            // ── Legs ──────────────────────────────────────────────────────
-            float legAmp = 22f * b;
-            if (_lHip != null) _lHip.localEulerAngles = new Vector3(0f, 0f,  c * legAmp);
-            if (_rHip != null) _rHip.localEulerAngles = new Vector3(0f, 0f, -c * legAmp);
-
-            // Knee bend — trailing leg bends more (natural biomechanics)
-            float lBend = Mathf.Max(0f, -c) * 20f * b;
-            float rBend = Mathf.Max(0f,  c) * 20f * b;
-            if (_lKnee != null) _lKnee.localEulerAngles = new Vector3(0f, 0f,  lBend);
-            if (_rKnee != null) _rKnee.localEulerAngles = new Vector3(0f, 0f, -rBend);
-
-            // Ankle counter-rotate slightly (foot stays level)
-            float lAnkle = lBend * 0.3f;
-            float rAnkle = rBend * 0.3f;
+            float lAnkle = lKnee * 0.3f;
+            float rAnkle = rKnee * 0.3f;
             if (_lAnkle != null) _lAnkle.localEulerAngles = new Vector3(0f, 0f, -lAnkle);
             if (_rAnkle != null) _rAnkle.localEulerAngles = new Vector3(0f, 0f,  rAnkle);
-
-            // ── Arms (opposite phase to legs for natural cross-swing) ─────
-            float armAmp = 26f * b;
-            if (_lUArm != null) _lUArm.localEulerAngles = new Vector3(0f, 0f, -90f + c * armAmp);
-            if (_rUArm != null) _rUArm.localEulerAngles = new Vector3(0f, 0f,  90f - c * armAmp);
-
-            // Forearm follows with slight lag (multiply by smaller factor)
-            if (_lElbow != null) _lElbow.localEulerAngles = new Vector3(0f, 0f, c * armAmp * 0.4f);
-            if (_rElbow != null) _rElbow.localEulerAngles = new Vector3(0f, 0f, -c * armAmp * 0.4f);
-
-            // ── Body bob ──────────────────────────────────────────────────
-            float bob = Mathf.Abs(c2) * 0.06f * b;
-            if (_hip != null)
-            {
-                var p = _hip.localPosition;
-                _hip.localPosition = new Vector3(p.x, -bob, p.z);
-            }
-
-            // ── Hair streams back during run ──────────────────────────────
-            if (_hairTop != null)
-            {
-                float lean = (_facingLeft ? -12f : 12f) * b;
-                _hairTop.localEulerAngles = new Vector3(0f, 0f, lean);
-            }
         }
 
         // ── Rig construction ─────────────────────────────────────────────────
 
         private void BuildRig()
         {
-            // Apply global scale once here; Update keeps it updated for flip
+            // AgniVisual stays at uniform positive scale; flip is done by _root child.
             transform.localScale = Vector3.one * SCALE;
+
+            // Flip anchor — scale.x toggled in Update()
+            _root = new GameObject("Agni_Root").transform;
+            _root.SetParent(transform, false);
+            _root.localPosition = Vector3.zero;
 
             var sp = LoadSprites();
 
-            // ── Central spine chain ──────────────────────────────────────
-            _hip     = Bone("hip",      transform, 0f,    0f);
-            _spine   = Bone("spine",    _hip,      0f,    1.73f);   // top of torso_lower
-            _neck    = Bone("neck",     _spine,    0f,    2.22f);   // top of torso_upper
-            _hairTop = Bone("hair_top", _neck,     0f,    1.72f);   // top of head
+            // ── Central spine chain ─────────────────────────────────────────
+            // Hip is raised to HIP_Y so boot bottoms sit at Y=0 (feet / ground contact).
+            _hip     = Bone("hip",      _root,   0f,    HIP_Y);
+            _spine   = Bone("spine",    _hip,    0f,    1.73f);
+            _neck    = Bone("neck",     _spine,  0f,    2.22f);
+            _hairTop = Bone("hair_top", _neck,   0f,    1.72f);
 
-            // ── Torso sprites ────────────────────────────────────────────
-            // torso_lower: 322×173 px → half-h = 0.865  (centered between hip and spine)
+            // ── Torso sprites ────────────────────────────────────────────────
             Spr("torso_lower", _hip,   0f,  0.865f, sp, 14);
-            // belt: 328×102 px → centered slightly above hip
             Spr("belt",        _hip,   0f,  0.51f,  sp, 15);
-            // torso_upper: 344×222 px → half-h = 1.11  (centered between spine and neck)
             Spr("torso_upper", _spine, 0f,  1.11f,  sp, 16);
 
-            // ── Head ─────────────────────────────────────────────────────
-            // head: 240×172 px → half-h = 0.86
+            // ── Head ─────────────────────────────────────────────────────────
             Spr("head",       _neck,    0f,  0.86f, sp, 19);
-            // hair_flame: 214×90 px → half-h = 0.45
             Spr("hair_flame", _hairTop, 0f,  0.45f, sp, 20);
 
-            // ── Left arm — front layer (higher sort) ─────────────────────
-            // Shoulder attachment at x=−(torso_upper_half_w−shoulder_half_w) ≈ −1.72
-            _lShoulder = Bone("l_shldr", _spine,     -1.72f, 1.80f);
+            // ── Left arm (front layer) ────────────────────────────────────────
+            _lShoulder = Bone("l_shldr",  _spine,     -1.72f,  1.80f);
             Spr("shoulder_L", _lShoulder, 0f, 0f, sp, 17);
 
-            // Outer edge of shoulder (shoulder_L = 147px wide → half = 0.735)
             _lUArm = Bone("l_uarm", _lShoulder, -1.47f, 0f);
-            _lUArm.localEulerAngles = new Vector3(0f, 0f, -90f);  // hang down from T-pose
-            // upper_arm_L: 132px wide → center 0.66 from pivot
+            _lUArm.localEulerAngles = new Vector3(0f, 0f, -90f);
             Spr("upper_arm_L", _lUArm, -0.66f, 0f, sp, 17);
 
-            // Elbow: 1.32 units along arm (full width of upper_arm_L)
             _lElbow = Bone("l_elbow", _lUArm, -1.32f, 0f);
-            // lower_arm_L: 175px wide → center 0.875
             Spr("lower_arm_L", _lElbow, -0.875f, 0f, sp, 17);
 
-            // Wrist: 1.75 units along forearm
             _lWrist = Bone("l_wrist", _lElbow, -1.75f, 0f);
-            // hand_L: 120px wide → center 0.60
             Spr("hand_L", _lWrist, -0.60f, 0f, sp, 17);
 
-            // ── Right arm — back layer (lower sort) ──────────────────────
+            // ── Right arm (back layer) ────────────────────────────────────────
             _rShoulder = Bone("r_shldr", _spine,    1.72f, 1.80f);
             Spr("shoulder_R", _rShoulder, 0f, 0f, sp, 11);
 
             _rUArm = Bone("r_uarm", _rShoulder, 1.47f, 0f);
             _rUArm.localEulerAngles = new Vector3(0f, 0f, 90f);
-            // upper_arm_R: 134px wide → center 0.67
             Spr("upper_arm_R", _rUArm, 0.67f, 0f, sp, 11);
 
-            // r_elbow: 1.34 units along upper arm
             _rElbow = Bone("r_elbow", _rUArm, 1.34f, 0f);
-            // lower_arm_R: 176px wide → center 0.88
             Spr("lower_arm_R", _rElbow, 0.88f, 0f, sp, 11);
 
             _rWrist = Bone("r_wrist", _rElbow, 1.76f, 0f);
-            // hand_R: 106px wide → center 0.53
-            Spr("hand_R",       _rWrist,  0.53f,  0f,    sp, 11);
-            // Weapon hangs in right hand — offset forward and slightly down
-            // weapon_sword: 292×220 px → 2.92×2.20 units
-            Spr("weapon_sword", _rWrist,  1.46f, -1.10f, sp, 12);
+            Spr("hand_R", _rWrist, 0.53f, 0f, sp, 11);
 
-            // ── Left leg — front layer ────────────────────────────────────
-            // Hip joint: hip_width/2 = ~0.80 offset
+            // ── Weapon holder: named pivot so weapon always follows right hand ─
+            _weaponHolder = Bone("weaponHolder_R", _rWrist, 1.46f, 0f);
+            Spr("weapon_sword", _weaponHolder, 0f, -1.10f, sp, 12);
+
+            // ── Left leg (front layer) ────────────────────────────────────────
             _lHip   = Bone("l_hip",   _hip,   -0.80f,  0f);
-            // thigh_L: 170×163 px → half-h = 0.815 (hangs below joint)
             Spr("thigh_L", _lHip,   0f, -0.815f, sp, 18);
-            // Knee: 1.63 units below hip joint (full thigh height)
-            _lKnee  = Bone("l_knee",  _lHip,   0f, -1.63f);
-            // shin_L: 160×122 px → half-h = 0.61
-            Spr("shin_L",  _lKnee,  0f, -0.61f,  sp, 18);
-            // Ankle: 1.22 units below knee
-            _lAnkle = Bone("l_ankle", _lKnee,  0f, -1.22f);
-            // boot_L: 172×92 px → half-h = 0.46
-            Spr("boot_L",  _lAnkle, 0f, -0.46f,  sp, 18);
 
-            // ── Right leg — back layer ────────────────────────────────────
+            _lKnee  = Bone("l_knee",  _lHip,   0f, -1.63f);
+            Spr("shin_L",  _lKnee,  0f, -0.61f, sp, 18);
+
+            _lAnkle = Bone("l_ankle", _lKnee,  0f, -1.22f);
+            Spr("boot_L",  _lAnkle, 0f, -0.46f, sp, 18);
+
+            // ── Right leg (back layer) ────────────────────────────────────────
             _rHip   = Bone("r_hip",   _hip,    0.80f,  0f);
             Spr("thigh_R", _rHip,   0f, -0.815f, sp, 10);
-            _rKnee  = Bone("r_knee",  _rHip,   0f, -1.63f);
-            // shin_R: 168×122 px → half-h = 0.61 (same as L)
-            Spr("shin_R",  _rKnee,  0f, -0.61f,  sp, 10);
-            _rAnkle = Bone("r_ankle", _rKnee,  0f, -1.22f);
-            Spr("boot_R",  _rAnkle, 0f, -0.46f,  sp, 10);
 
-            Debug.Log("[AgniRiggedCharacter] Rig built — 20 parts assembled.");
+            _rKnee  = Bone("r_knee",  _rHip,   0f, -1.63f);
+            Spr("shin_R",  _rKnee,  0f, -0.61f, sp, 10);
+
+            _rAnkle = Bone("r_ankle", _rKnee,  0f, -1.22f);
+            Spr("boot_R",  _rAnkle, 0f, -0.46f, sp, 10);
+
+            Debug.Log("[AgniRiggedCharacter] Rig built — 20 parts assembled. Origin=feet.");
         }
 
-        // ── Small factories ──────────────────────────────────────────────────
+        // ── Factories ─────────────────────────────────────────────────────────
 
         private static Transform Bone(string name, Transform parent, float lx, float ly)
         {
@@ -298,10 +259,8 @@ namespace AGNIDAWN.Bootstrap
             foreach (var n in names)
             {
                 var sp = Resources.Load<Sprite>($"Characters/AgniParts/{n}");
-                if (sp != null)
-                    d[n] = sp;
-                else
-                    Debug.LogWarning($"[AgniRig] Cannot load: Characters/AgniParts/{n}");
+                if (sp != null) d[n] = sp;
+                else Debug.LogWarning($"[AgniRig] Cannot load: Characters/AgniParts/{n}");
             }
             return d;
         }
