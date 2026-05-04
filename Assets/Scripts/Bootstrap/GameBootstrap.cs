@@ -139,22 +139,8 @@ namespace AGNIDAWN.Bootstrap
             sr.sprite       = arenaSprite;
             sr.sortingOrder = -100;
 
-            // Use actual camera to compute fill scale — must run after BuildCamera()
-            var cam = Camera.main ?? Object.FindAnyObjectByType<Camera>();
-            float camH  = (cam != null ? cam.orthographicSize : 6f) * 2f;
-            // Use Screen dimensions for aspect — cam.aspect may not be updated yet on first frame
-            float aspect = (Screen.width > 0 && Screen.height > 0)
-                           ? (float)Screen.width / Screen.height
-                           : (cam != null ? cam.aspect : 0.43f);
-            float camW = camH * aspect;
-            float sw   = arenaSprite.bounds.size.x;
-            float sh   = arenaSprite.bounds.size.y;
-            // Scale so the sprite fully covers the camera viewport (no gaps)
-            float scale = Mathf.Max(camW / sw, camH / sh) * 1.02f; // 2% safety margin
-            go.transform.localScale = new Vector3(scale, scale, 1f);
-
             // Parent to camera so the background always fills the screen
-            // regardless of where the camera moves
+            var cam = Camera.main ?? Object.FindAnyObjectByType<Camera>();
             if (cam != null)
             {
                 go.transform.SetParent(cam.transform, false);
@@ -164,7 +150,10 @@ namespace AGNIDAWN.Bootstrap
             {
                 go.transform.position = new Vector3(0f, 0f, 0f);
             }
-            Debug.Log($"[GameBootstrap] Arena: spriteSize={sw:F2}x{sh:F2} camView={camW:F2}x{camH:F2} scale={scale:F3}");
+
+            // Defer scale to first frame — Screen.width/height are not reliable at bootstrap time on Android
+            go.AddComponent<ArenaAutoScale>();
+            Debug.Log("[GameBootstrap] Arena sprite loaded — scale deferred to first frame.");
         }
 
         #endregion
@@ -195,7 +184,7 @@ namespace AGNIDAWN.Bootstrap
                 Debug.LogWarning("[GameBootstrap] AgniKund.png not found in Resources — using procedural circle fallback");
                 // Fallback: procedural golden circle
                 sr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.72f, 0.08f), 96);
-                go.transform.localScale = Vector3.one * 1.5f;
+                go.transform.localScale = Vector3.one * 0.4f;  // was 1.5f — caused massive on-screen circle
 
                 var ringGo = new GameObject("Ring");
                 ringGo.transform.SetParent(go.transform, false);
@@ -229,14 +218,17 @@ namespace AGNIDAWN.Bootstrap
             go.layer = LayerMask.NameToLayer("Default");
             go.transform.position = new Vector3(0, 0f, 0);
 
-            // Sprite — painted Agni character art
+            // Sprite — rigged 20-part Agni character
+            // The flat SpriteRenderer is kept on the root GO but cleared;
+            // AgniRiggedCharacter creates all part sprites as child GameObjects.
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sortingOrder = 10;
-            var agniAnim = CharacterSpriteFactory.Setup(go, "Agni", sortingOrder: 10);
-            if (agniAnim == null) // fallback: circle if sprites failed to load
-            {
-                sr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.45f, 0.05f), 48);
-            }
+            sr.sprite  = null;
+            sr.enabled = false;   // invisible — rigged parts render instead
+
+            var rigGo = new GameObject("AgniVisual");
+            rigGo.transform.SetParent(go.transform, false);
+            rigGo.transform.localPosition = Vector3.zero;
+            rigGo.AddComponent<AgniRiggedCharacter>();
 
             // Physics
             var rb = go.AddComponent<Rigidbody2D>();
@@ -952,7 +944,32 @@ namespace AGNIDAWN.Bootstrap
         }
     }
 
-    // ── Enemy HP bar updater ───────────────────────────────────────────────────
+    // ── Arena background auto-scaler (runs on first frame so Screen dims are valid) ──────
+    public class ArenaAutoScale : MonoBehaviour
+    {
+        private void Start()
+        {
+            var sr = GetComponent<SpriteRenderer>();
+            if (sr == null || sr.sprite == null) { Destroy(this); return; }
+
+            // Prefer cam.aspect since it uses the actual render target size
+            var cam = GetComponentInParent<Camera>() ?? Camera.main ?? Object.FindAnyObjectByType<Camera>();
+            float camH   = cam != null ? cam.orthographicSize * 2f : 12f;
+            float aspect = cam != null && cam.aspect > 0f
+                           ? cam.aspect
+                           : (Screen.height > 0 ? (float)Screen.width / Screen.height : 0.56f);
+            float camW   = camH * aspect;
+            float sw     = sr.sprite.bounds.size.x;
+            float sh     = sr.sprite.bounds.size.y;
+            if (sw <= 0f || sh <= 0f) { Destroy(this); return; }
+            float scale  = Mathf.Max(camW / sw, camH / sh) * 1.02f;
+            transform.localScale = new Vector3(scale, scale, 1f);
+            Debug.Log($"[ArenaAutoScale] scale={scale:F3}  cam={camW:F2}x{camH:F2}  sprite={sw:F2}x{sh:F2}");
+            Destroy(this); // one-shot
+        }
+    }
+
+    // __ Enemy HP bar updater
     public class EnemyHPBar : MonoBehaviour
     {
         public SimpleEnemy Enemy;
