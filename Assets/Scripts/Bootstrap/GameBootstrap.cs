@@ -141,16 +141,30 @@ namespace AGNIDAWN.Bootstrap
 
             // Use actual camera to compute fill scale — must run after BuildCamera()
             var cam = Camera.main ?? Object.FindAnyObjectByType<Camera>();
-            float camH = (cam != null ? cam.orthographicSize : 6f) * 2f;
-            float camW = camH * (cam != null ? cam.aspect : 0.43f);
+            float camH  = (cam != null ? cam.orthographicSize : 6f) * 2f;
+            // Use Screen dimensions for aspect — cam.aspect may not be updated yet on first frame
+            float aspect = (Screen.width > 0 && Screen.height > 0)
+                           ? (float)Screen.width / Screen.height
+                           : (cam != null ? cam.aspect : 0.43f);
+            float camW = camH * aspect;
             float sw   = arenaSprite.bounds.size.x;
             float sh   = arenaSprite.bounds.size.y;
-            // Scale up whichever dimension would leave a gap, preserve aspect ratio
-            float scale = Mathf.Max(camW / sw, camH / sh);
+            // Scale so the sprite fully covers the camera viewport (no gaps)
+            float scale = Mathf.Max(camW / sw, camH / sh) * 1.02f; // 2% safety margin
             go.transform.localScale = new Vector3(scale, scale, 1f);
-            // Anchor to camera center so the background fills the whole viewport
-            float camY = cam != null ? cam.transform.position.y : 0f;
-            go.transform.position = new Vector3(0f, camY, 0f);
+
+            // Parent to camera so the background always fills the screen
+            // regardless of where the camera moves
+            if (cam != null)
+            {
+                go.transform.SetParent(cam.transform, false);
+                go.transform.localPosition = new Vector3(0f, 0f, 11f); // world z≈1, in front of camera
+            }
+            else
+            {
+                go.transform.position = new Vector3(0f, 0f, 0f);
+            }
+            Debug.Log($"[GameBootstrap] Arena: spriteSize={sw:F2}x{sh:F2} camView={camW:F2}x{camH:F2} scale={scale:F3}");
         }
 
         #endregion
@@ -213,7 +227,7 @@ namespace AGNIDAWN.Bootstrap
             var go = new GameObject("Player");
             go.tag = "Player";
             go.layer = LayerMask.NameToLayer("Default");
-            go.transform.position = new Vector3(0, 3f, 0);
+            go.transform.position = new Vector3(0, 0f, 0);
 
             // Sprite — painted Agni character art
             var sr = go.AddComponent<SpriteRenderer>();
@@ -242,9 +256,9 @@ namespace AGNIDAWN.Bootstrap
             var glowGo = new GameObject("Glow");
             glowGo.transform.SetParent(go.transform, false);
             var glowSr = glowGo.AddComponent<SpriteRenderer>();
-            glowSr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.3f, 0f, 0.35f), 64);
+            glowSr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.45f, 0f, 0.18f), 64);
             glowSr.sortingOrder = 9;
-            glowGo.transform.localScale = Vector3.one * 1.6f;
+            glowGo.transform.localScale = Vector3.one * 1.3f;
             glowGo.AddComponent<GlowPulser>();
 
             // Cache for other systems
@@ -446,8 +460,8 @@ namespace AGNIDAWN.Bootstrap
             var pauseBtnGo = new GameObject("PauseBtn");
             pauseBtnGo.transform.SetParent(pauseCanvas2.transform, false);
             var pauseImg = pauseBtnGo.AddComponent<Image>();
-            pauseImg.color = new Color(1f, 1f, 1f, 0.15f);
-            pauseImg.sprite = SpriteFactory.CreateSquare(Color.white, 32, 4f);
+            pauseImg.color = new Color(0f, 0f, 0f, 0.45f);  // dark semi-transparent, no white box
+            pauseImg.sprite = null;
             var pauseRect = pauseImg.rectTransform;
             pauseRect.anchorMin = new Vector2(1f, 1f);
             pauseRect.anchorMax = new Vector2(1f, 1f);
