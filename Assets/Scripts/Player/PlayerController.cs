@@ -5,8 +5,11 @@ using AGNIDAWN.Core;
 namespace AGNIDAWN.Player
 {
     /// <summary>
-    /// Top-down player movement with dash (Agni Rush).
-    /// Uses Unity Input System. Rigidbody2D for physics-based movement.
+    /// Side-view player movement with dash (Agni Rush).
+    /// Uses Unity Input System. Rigidbody2D with gravity for grounded platformer feel.
+    /// Left/right input controls horizontal velocity; gravity handles vertical.
+    ///
+    /// Ground check: Physics2D.OverlapCircle from feet position against ground layer.
     /// Designed for 20-minute survival sessions — responsive feel is critical.
     /// Linear: FAI-7
     /// </summary>
@@ -16,8 +19,15 @@ namespace AGNIDAWN.Player
         // ── Inspector ──────────────────────────────────────────────────────
         [Header("Movement")]
         [SerializeField] private float moveSpeed       = 5f;
-        [SerializeField] private float acceleration    = 20f;
-        [SerializeField] private float deceleration    = 25f;
+        [SerializeField] private float acceleration    = 22f;
+        [SerializeField] private float deceleration    = 28f;
+
+        [Header("Gravity & Ground")]
+        [SerializeField] private float gravityScale    = 3f;
+        // Feet are ~0.75 u below the player pivot (CapsuleCollider2D bottom).
+        // Adjust if character sinks or floats above the platform.
+        [SerializeField] private Vector2 groundCheckOffset = new Vector2(0f, -0.80f);
+        [SerializeField] private float   groundCheckRadius = 0.18f;
 
         [Header("Dash — Agni Rush")]
         [SerializeField] private float dashSpeed       = 18f;
@@ -34,20 +44,27 @@ namespace AGNIDAWN.Player
 
         // ── State ──────────────────────────────────────────────────────────
         private Vector2 _inputDir;
-        private Vector2 _velocity;
+        private float   _velocityX;        // Only X is manually controlled
         private bool    _isDashing;
         private int     _dashCharges;
         private float   _dashCooldownTimer;
         private float   _dashTimer;
         private Vector2 _dashDir;
+        private bool    _isGrounded;
+
+        // ── Ground layer mask (everything except Enemy + Ignore Raycast) ──
+        private int _groundMask;
 
         // ── Runtime stats (modifiable by boons) ───────────────────────────
         public float MoveSpeedMult { get; set; } = 1f;
         public float DashCooldownMult { get; set; } = 1f;
 
         // ── Anim hashes ───────────────────────────────────────────────────
-        private static readonly int ANIM_SPEED  = Animator.StringToHash("Speed");
+        private static readonly int ANIM_SPEED   = Animator.StringToHash("Speed");
         private static readonly int ANIM_DASHING = Animator.StringToHash("IsDashing");
+
+        // ── Public read ───────────────────────────────────────────────────
+        public bool IsGrounded => _isGrounded;
 
         // ──────────────────────────────────────────────────────────────────
         #region Unity Lifecycle
@@ -55,9 +72,18 @@ namespace AGNIDAWN.Player
         private void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
-            _rb.gravityScale = 0f;
+            _rb.gravityScale = gravityScale;
             _rb.freezeRotation = true;
+            _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             _dashCharges = maxDashCharges;
+
+            // Ground mask: everything except Enemy and Ignore Raycast layers
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            int ignoreLayer = LayerMask.NameToLayer("Ignore Raycast");
+            _groundMask = ~0; // all layers
+            if (enemyLayer >= 0)   _groundMask &= ~(1 << enemyLayer);
+            if (ignoreLayer >= 0)  _groundMask &= ~(1 << ignoreLayer);
+            _groundMask &= ~(1 << gameObject.layer); // exclude own layer
         }
 
         private void OnEnable()
@@ -76,6 +102,7 @@ namespace AGNIDAWN.Player
         {
             if (!GameManager.Instance.IsRunning) return;
 
+            CheckGrounded();
             HandleDashCooldown();
             UpdateAnimator();
             FlipSprite();
@@ -87,7 +114,8 @@ namespace AGNIDAWN.Player
 
             if (_isDashing)
             {
-                _rb.linearVelocity = _dashDir * dashSpeed;
+                // During dash: horizontal only, preserve gravity
+                _rb.linearVelocity = new Vector2(_dashDir.x * dashSpeed, _rb.linearVelocity.y);
                 _dashTimer -= Time.fixedDeltaTime;
                 if (_dashTimer <= 0f) EndDash();
             }
@@ -95,6 +123,25 @@ namespace AGNIDAWN.Player
             {
                 ApplyMovement();
             }
+        }
+
+        #endregion
+
+        // ──────────────────────────────────────────────────────────────────
+        #region Ground Check
+
+        private void CheckGrounded()
+        {
+            Vector2 checkPos = (Vector2)transform.position + groundCheckOffset;
+            _isGrounded = Physics2D.OverlapCircle(checkPos, groundCheckRadius, _groundMask) != null;
+        }
+
+        // Draw ground check in editor so it's easy to tune
+        private void OnDrawGizmosSelected()
+        {
+            Gizmos.color = _isGrounded ? Color.green : Color.red;
+            Vector2 pos  = (Vector2)transform.position + groundCheckOffset;
+            Gizmos.DrawWireSphere(pos, groundCheckRadius);
         }
 
         #endregion
@@ -119,15 +166,20 @@ namespace AGNIDAWN.Player
         private void ApplyMovement()
         {
             float targetSpeed = moveSpeed * MoveSpeedMult;
-            Vector2 targetVel = _inputDir.normalized * targetSpeed;
+            // Only horizontal — gravity handles vertical
+            float targetVelX = _inputDir.x * targetSpeed;
 
-            float accel = _inputDir.sqrMagnitude > 0.01f ? acceleration : deceleration;
-            _velocity = Vector2.MoveTowards(_velocity, targetVel, accel * Time.fixedDeltaTime);
-            _rb.linearVelocity = _velocity;
+            float accel = Mathf.Abs(_inputDir.x) > 0.01f ? acceleration : deceleration;
+            _velocityX = Mathf.MoveTowards(_velocityX, targetVelX, accel * Time.fixedDeltaTime);
+
+            // Keep physics-calculated Y (gravity + bounce), only override X
+            _rb.linearVelocity = new Vector2(_velocityX, _rb.linearVelocity.y);
         }
 
         private void FlipSprite()
         {
+            // AgniRiggedCharacter handles its own flip from Rigidbody2D velocity.
+            // This also flips spriteRoot if one is assigned in Inspector.
             if (_inputDir.x != 0 && spriteRoot != null)
             {
                 spriteRoot.localScale = new Vector3(
@@ -149,9 +201,10 @@ namespace AGNIDAWN.Player
             _dashCharges--;
             _dashTimer = dashDuration;
             _isDashing = true;
-            _dashDir   = _inputDir.sqrMagnitude > 0.01f
-                ? _inputDir.normalized
-                : (spriteRoot != null && spriteRoot.localScale.x < 0 ? Vector2.left : Vector2.right);
+            // Dash in facing direction (horizontal only)
+            float dirX = _inputDir.x != 0 ? Mathf.Sign(_inputDir.x)
+                       : (spriteRoot != null && spriteRoot.localScale.x < 0 ? -1f : 1f);
+            _dashDir = new Vector2(dirX, 0f);
 
             EventBus.Emit("OnPlayerDash", transform.position);
             int _enemyLayer = LayerMask.NameToLayer("Enemy");
@@ -163,7 +216,7 @@ namespace AGNIDAWN.Player
         private void EndDash()
         {
             _isDashing = false;
-            _velocity  = _dashDir * (moveSpeed * MoveSpeedMult);
+            _velocityX = _dashDir.x * (moveSpeed * MoveSpeedMult);
             int _enemyLayerEnd = LayerMask.NameToLayer("Enemy");
             if (_enemyLayerEnd >= 0 && _enemyLayerEnd <= 31 &&
                 gameObject.layer >= 0 && gameObject.layer <= 31)
@@ -192,7 +245,7 @@ namespace AGNIDAWN.Player
         private void UpdateAnimator()
         {
             if (animator == null) return;
-            animator.SetFloat(ANIM_SPEED,   _rb.linearVelocity.magnitude);
+            animator.SetFloat(ANIM_SPEED,   Mathf.Abs(_rb.linearVelocity.x));
             animator.SetBool(ANIM_DASHING,  _isDashing);
         }
 
@@ -201,7 +254,11 @@ namespace AGNIDAWN.Player
         // ──────────────────────────────────────────────────────────────────
         #region Event Handlers
 
-        private void OnPause()  => _rb.linearVelocity = Vector2.zero;
+        private void OnPause()
+        {
+            _rb.linearVelocity = Vector2.zero;
+            _velocityX = 0f;
+        }
         private void OnResume() { }
 
         #endregion
@@ -215,16 +272,13 @@ namespace AGNIDAWN.Player
         public Vector2 GetVelocity() => _rb.linearVelocity;
         public bool    IsDashing()   => _isDashing;
 
-        // ── Touch / virtual-joystick bridge ───────────────────────────────────
+        // ── Touch / virtual-joystick bridge ──────────────────────────────
         /// <summary>
-        /// Called by VirtualJoystick (and any other non-InputSystem source) to
-        /// drive movement. Equivalent to what OnMove(InputValue) does.
+        /// Called by VirtualJoystick. Only X component is used in side-view mode.
         /// </summary>
         public void SetMoveInput(Vector2 dir) => _inputDir = dir;
 
-        /// <summary>
-        /// Triggers a dash attempt from virtual dash button.
-        /// </summary>
+        /// <summary>Triggers a dash attempt from virtual dash button.</summary>
         public void TriggerDash() => TryDash();
 
         #endregion

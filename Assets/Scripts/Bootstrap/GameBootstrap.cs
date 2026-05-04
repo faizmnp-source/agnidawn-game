@@ -29,6 +29,18 @@ namespace AGNIDAWN.Bootstrap
         internal static AgniKundMini AgniKund;
         private  static CameraFollow _cameraFollow;
 
+        // ── Ground / side-view layout constants ───────────────────────────────
+        // GROUND_PLATFORM_Y is the world-Y of the TOP SURFACE of the ground collider.
+        // Adjust this if Agni floats above or sinks into the visible stone floor.
+        // With orthoSize=6 the viewport runs from y=-6 to y=+6.
+        // Default -3.5 = roughly 80 % down the arena, matching a typical front-stage floor.
+        private const float GROUND_PLATFORM_Y  = -3.5f;
+        // Player pivot sits this far above the ground surface so feet are flush.
+        // = capsule-bottom offset (0.75) + ground collider half-height (0.05)
+        private const float PLAYER_SPAWN_Y     = GROUND_PLATFORM_Y + 0.80f;
+        // Shadow hovers 2 cm above ground surface so it doesn't z-fight.
+        private const float SHADOW_Y           = GROUND_PLATFORM_Y + 0.02f;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Init()
         {
@@ -52,6 +64,7 @@ namespace AGNIDAWN.Bootstrap
             EnsureSingletons();
             BuildCamera();
             BuildArena();
+            BuildGroundPlatform();   // ← must be before BuildPlayer so collider exists on first frame
             BuildAgniKund();
             BuildPlayer();
             BuildEnemySpawner();
@@ -127,12 +140,15 @@ namespace AGNIDAWN.Bootstrap
 
         private static void BuildArena()
         {
-            var arenaSprite = Resources.Load<Sprite>("Arena");
+            // Try Arena1 first (user-supplied), fall back to Arena if not found.
+            var arenaSprite = Resources.Load<Sprite>("Arena1")
+                           ?? Resources.Load<Sprite>("Arena");
             if (arenaSprite == null)
             {
-                Debug.LogWarning("[GameBootstrap] Arena.png not found in Resources — using solid background.");
+                Debug.LogWarning("[GameBootstrap] Arena1.png / Arena.png not found in Resources — using solid background.");
                 return;
             }
+            Debug.Log($"[GameBootstrap] Arena image loaded: {arenaSprite.name}");
 
             var go = new GameObject("ArenaBackground");
             var sr = go.AddComponent<SpriteRenderer>();
@@ -214,54 +230,128 @@ namespace AGNIDAWN.Bootstrap
         private static void BuildPlayer()
         {
             var go = new GameObject("Player");
-            go.tag = "Player";
+            go.tag   = "Player";
             go.layer = LayerMask.NameToLayer("Default");
-            go.transform.position = new Vector3(0, 0f, 0);
+            // Spawn with feet flush on the ground platform surface.
+            // PLAYER_SPAWN_Y = GROUND_PLATFORM_Y + 0.80 so bottom of capsule sits on top of collider.
+            go.transform.position = new Vector3(0f, PLAYER_SPAWN_Y, 0f);
 
-            // Sprite — rigged 20-part Agni character
-            // The flat SpriteRenderer is kept on the root GO but cleared;
+            // Sprite root — rigged 20-part Agni character.
+            // The flat SpriteRenderer on the root GO is kept but hidden;
             // AgniRiggedCharacter creates all part sprites as child GameObjects.
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite  = null;
-            sr.enabled = false;   // invisible — rigged parts render instead
+            sr.enabled = false;
 
             var rigGo = new GameObject("AgniVisual");
             rigGo.transform.SetParent(go.transform, false);
             rigGo.transform.localPosition = Vector3.zero;
             rigGo.AddComponent<AgniRiggedCharacter>();
 
-            // Physics
+            // ── Physics ────────────────────────────────────────────────────
+            // gravityScale is set by PlayerController.Awake (serialized field default = 3).
             var rb = go.AddComponent<Rigidbody2D>();
-            rb.gravityScale = 0f;
-            rb.freezeRotation = true;
+            rb.gravityScale           = 3f;    // side-view gravity
+            rb.freezeRotation         = true;
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            // Prevent jitter: keep linear drag low (gravity does the braking)
+            rb.linearDamping          = 0f;
 
-            // Collider
-            var col = go.AddComponent<CircleCollider2D>();
-            col.radius = 0.5f;
+            // ── Collider: CapsuleCollider2D with bottom at feet ─────────────
+            // Character height in world units ≈ 1.55 (at SCALE=0.2).
+            // Capsule: size (0.5, 1.6), offset (0, 0.05) → bottom = 0.05-0.80 = -0.75
+            // i.e. feet are 0.75 u below pivot — matches AgniRiggedCharacter bones.
+            var cap = go.AddComponent<CapsuleCollider2D>();
+            cap.direction   = CapsuleDirection2D.Vertical;
+            cap.size        = new Vector2(0.50f, 1.60f);
+            cap.offset      = new Vector2(0f, 0.05f);
+            // Frictionless material so Agni doesn't stick to vertical surfaces
+            var noFriction  = new PhysicsMaterial2D("AgniNoFriction");
+            noFriction.friction    = 0f;
+            noFriction.bounciness  = 0f;
+            cap.sharedMaterial     = noFriction;
 
-            // Player systems
-            var health = go.AddComponent<HealthSystem>();
+            // ── GroundCheck child GO for visual debugging ──────────────────
+            var gcGo = new GameObject("GroundCheck");
+            gcGo.transform.SetParent(go.transform, false);
+            gcGo.transform.localPosition = new Vector3(0f, -0.80f, 0f);
+
+            // ── Player systems ──────────────────────────────────────────────
+            var health     = go.AddComponent<HealthSystem>();
             var controller = go.AddComponent<PlayerController>();
 
-            // Glow indicator (slightly larger tinted circle behind)
+            // ── Glow indicator ─────────────────────────────────────────────
             var glowGo = new GameObject("Glow");
             glowGo.transform.SetParent(go.transform, false);
             var glowSr = glowGo.AddComponent<SpriteRenderer>();
-            glowSr.sprite = SpriteFactory.CreateCircle(new Color(1f, 0.45f, 0f, 0.18f), 64);
+            glowSr.sprite       = SpriteFactory.CreateCircle(new Color(1f, 0.45f, 0f, 0.18f), 64);
             glowSr.sortingOrder = 9;
             glowGo.transform.localScale = Vector3.one * 1.3f;
             glowGo.AddComponent<GlowPulser>();
 
-            // Cache for other systems
+            // ── Cache for other systems ─────────────────────────────────────
             PlayerTransform = go.transform;
 
-            // Wire camera follow using the ref stored during BuildCamera
+            // ── Wire camera to follow Agni (X+Y) ───────────────────────────
             if (_cameraFollow != null) _cameraFollow.Target = go.transform;
 
-            // Build virtual joystick UI (must come after canvas exists or build inline)
+            // ── Shadow ─────────────────────────────────────────────────────
+            BuildPlayerShadow(go.transform);
+
+            // ── Virtual joystick + dash button ─────────────────────────────
             BuildInputUI(controller);
         }
+
+        // ── Arena_GroundCollider ──────────────────────────────────────────────
+        private static void BuildGroundPlatform()
+        {
+            var go = new GameObject("Arena_GroundCollider");
+            go.layer = LayerMask.NameToLayer("Default");   // same layer for OverlapCircle
+            // Centre the collider at GROUND_PLATFORM_Y.
+            // The top surface = GROUND_PLATFORM_Y + (height/2) = GROUND_PLATFORM_Y + 0.05.
+            go.transform.position = new Vector3(0f, GROUND_PLATFORM_Y, 0f);
+
+            var box        = go.AddComponent<BoxCollider2D>();
+            box.size       = new Vector2(30f, 0.10f);   // 30 u wide — covers full arena + margins
+            box.offset     = Vector2.zero;
+
+            // Frictionless so Agni doesn't snag on invisible edges
+            var mat        = new PhysicsMaterial2D("GroundNoFriction");
+            mat.friction   = 0f;
+            mat.bounciness = 0f;
+            box.sharedMaterial = mat;
+
+            // Prevent enemies (gravityScale=0, top-down) from being blocked by this collider.
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            if (enemyLayer >= 0)
+                Physics2D.IgnoreLayerCollision(LayerMask.NameToLayer("Default"), enemyLayer, true);
+
+            Debug.Log($"[GameBootstrap] Arena_GroundCollider created at Y={GROUND_PLATFORM_Y:F2}  top={GROUND_PLATFORM_Y + 0.05f:F2}");
+        }
+
+        // ── PlayerShadow ─────────────────────────────────────────────────────
+        private static void BuildPlayerShadow(Transform playerTransform)
+        {
+            var go = new GameObject("PlayerShadow");
+
+            // Soft dark oval
+            var sr         = go.AddComponent<SpriteRenderer>();
+            sr.sprite      = SpriteFactory.CreateCircle(new Color(0f, 0f, 0f, MAX_SHADOW_ALPHA), 64);
+            sr.color       = new Color(0f, 0f, 0f, MAX_SHADOW_ALPHA);
+            sr.sortingOrder = 3;     // above Background (0), above ground layer (~2), below player (10+)
+
+            // Oval shape: wide and flat
+            go.transform.localScale = new Vector3(0.80f, 0.18f, 1f);
+            // Initial position flush on ground
+            go.transform.position   = new Vector3(playerTransform.position.x, SHADOW_Y, 0f);
+
+            var shadow = go.AddComponent<AGNIDAWN.Player.ShadowFollow>();
+            shadow.Init(playerTransform, SHADOW_Y);
+
+            Debug.Log($"[GameBootstrap] PlayerShadow created at Y={SHADOW_Y:F2}");
+        }
+
+        private const float MAX_SHADOW_ALPHA = 0.32f;
 
         private static void BuildInputUI(PlayerController controller)
         {
